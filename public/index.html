@@ -232,128 +232,117 @@ function vignette() {
   X.fillRect(0, 0, W, H);
 }
 
-// Draw animated robot face overlay on the "11" logo area
-function drawFace(lx, ly, logoSize, g, t) {
-  // Map the robot's screen area from SVG coords (viewBox 1280x1280)
-  // Robot face/display center is around SVG x=640, y=340
-  const sc = logoSize / 1280;
-  const fCX = lx + 640 * sc;   // face center X
-  const fCY = ly + 315 * sc;   // face center Y (robot head area)
-  const eyeR = 28 * sc;         // eye radius
-  const eyeGap = 145 * sc;      // gap between eyes
-  const mouthW = 130 * sc;      // mouth width
-  const mouthY = fCY + 58 * sc; // mouth Y
+// 8-bit robot face overlay — covers the "11" and draws pixel reactions
+function drawFace(lx, ly, ls, g, t) {
+  const px = Math.max(4, Math.floor(ls * 0.032)); // pixel block size
 
   // Update face mode
   faceModeTimer++;
-  if (faceModeTimer > 180 + Math.random() * 120) {
+  if (faceModeTimer > 140 + Math.random() * 100) {
     faceModeTimer = 0;
     faceMode = Math.floor(Math.random() * FACE_MODES.length);
-    if (g > 0.3) faceMode = 3; // glitch mode when glitching
   }
-  if (g > 0.5) faceGlitch = Math.min(1, faceGlitch + 0.1);
-  else faceGlitch = Math.max(0, faceGlitch - 0.05);
+  if (g > 0.5) { faceMode = 3; faceGlitch = Math.min(1, faceGlitch + 0.12); }
+  else faceGlitch = Math.max(0, faceGlitch - 0.04);
 
-  const glitchShift = faceGlitch * (Math.random() - 0.5) * 12;
   const mode = FACE_MODES[faceMode];
+  const gx = faceGlitch * (Math.random() - 0.5) * px * 3;
 
-  X.save();
+  // ── COVER: black rects over the "11" bars and mouth block ──────────────
+  X.fillStyle = '#000';
+  X.fillRect(lx + ls*0.320, ly + ls*0.255, ls*0.255, ls*0.210); // "11" area
+  X.fillRect(lx + ls*0.355, ly + ls*0.483, ls*0.215, ls*0.080); // mouth block
 
-  // Slight glitch offset
-  const ox = glitchShift;
-  const oy = faceGlitch * (Math.random() - 0.5) * 6;
+  // ── Eye & mouth positions ──────────────────────────────────────────────
+  const lEX = lx + ls * 0.382; // left eye center x
+  const rEX = lx + ls * 0.519; // right eye center x
+  const eyeY = ly + ls * 0.358; // eye center y
+  const mCX  = lx + ls * 0.460; // mouth center x
+  const mY   = ly + ls * 0.527; // mouth center y
 
-  // --- Draw Eyes ---
-  const lEyeX = fCX - eyeGap/2 + ox;
-  const rEyeX = fCX + eyeGap/2 + ox + (faceGlitch * (Math.random()-0.5) * 8);
-  const eyeY = fCY + oy;
-
+  // ── Draw expressions using ONLY fillRect (pure 8-bit) ──────────────────
   if (mode === 'blink') {
-    // Blink: thin horizontal lines
+    // ── BLINK: single horizontal bar ──
     X.fillStyle = '#fff';
-    X.fillRect(lEyeX - eyeR, eyeY - 3*sc, eyeR*2, 6*sc);
-    X.fillRect(rEyeX - eyeR, eyeY - 3*sc, eyeR*2, 6*sc);
+    X.fillRect(lEX - px*2 + gx, eyeY, px*4, px);
+    X.fillRect(rEX - px*2 + gx, eyeY, px*4, px);
+    // flat dashes mouth
+    X.fillRect(mCX - px*3, mY, px*2, px);
+    X.fillRect(mCX + px,   mY, px*2, px);
+
   } else if (mode === 'happy') {
-    // Happy: arched eyes (top half circle)
-    X.strokeStyle = '#fff';
-    X.lineWidth = Math.max(3, eyeR * 0.5);
-    X.beginPath(); X.arc(lEyeX, eyeY+eyeR*0.3, eyeR*0.85, Math.PI, 0); X.stroke();
-    X.beginPath(); X.arc(rEyeX, eyeY+eyeR*0.3, eyeR*0.85, Math.PI, 0); X.stroke();
+    // ── HAPPY: arched eyes (∩ shape) + pixel smile ──
+    X.fillStyle = '#fff';
+    // Left arch eye
+    X.fillRect(lEX - px*2 + gx, eyeY - px*2, px*4, px); // top
+    X.fillRect(lEX - px*2 + gx, eyeY - px,   px,   px); // left
+    X.fillRect(lEX + px   + gx, eyeY - px,   px,   px); // right
+    // Right arch eye
+    X.fillRect(rEX - px*2 + gx, eyeY - px*2, px*4, px);
+    X.fillRect(rEX - px*2 + gx, eyeY - px,   px,   px);
+    X.fillRect(rEX + px   + gx, eyeY - px,   px,   px);
+    // Smile (pixel arc)
+    X.fillRect(mCX - px*3, mY,      px,   px);
+    X.fillRect(mCX - px*2, mY + px, px*2, px);
+    X.fillRect(mCX,        mY + px, px*2, px);
+    X.fillRect(mCX + px*2, mY,      px,   px);
+
   } else if (mode === 'surprised') {
-    // Surprised: large circles
-    X.strokeStyle = '#fff';
-    X.lineWidth = Math.max(3, eyeR * 0.45);
-    X.beginPath(); X.arc(lEyeX, eyeY, eyeR*1.3, 0, Math.PI*2); X.stroke();
-    X.beginPath(); X.arc(rEyeX, eyeY, eyeR*1.3, 0, Math.PI*2); X.stroke();
+    // ── SURPRISED: hollow square eyes + open O mouth ──
+    X.fillStyle = '#fff';
+    // Left eye (hollow square)
+    X.fillRect(lEX - px*2 + gx, eyeY - px*2, px*4, px);   // top
+    X.fillRect(lEX - px*2 + gx, eyeY + px,   px*4, px);   // bottom
+    X.fillRect(lEX - px*2 + gx, eyeY - px,   px,   px*2); // left
+    X.fillRect(lEX + px   + gx, eyeY - px,   px,   px*2); // right
+    // Right eye
+    X.fillRect(rEX - px*2 + gx, eyeY - px*2, px*4, px);
+    X.fillRect(rEX - px*2 + gx, eyeY + px,   px*4, px);
+    X.fillRect(rEX - px*2 + gx, eyeY - px,   px,   px*2);
+    X.fillRect(rEX + px   + gx, eyeY - px,   px,   px*2);
+    // O mouth
+    X.fillRect(mCX - px*2, mY - px, px*4, px);   // top
+    X.fillRect(mCX - px*2, mY + px, px*4, px);   // bottom
+    X.fillRect(mCX - px*2, mY,      px,   px*2); // left
+    X.fillRect(mCX + px,   mY,      px,   px*2); // right
+
   } else if (mode === 'glitch') {
-    // Glitch: broken pixel blocks
-    const colors = ['#fff','rgba(255,255,255,0.3)','rgba(255,255,255,0.7)'];
-    for (let i = 0; i < 3; i++) {
-      X.fillStyle = colors[i % colors.length];
-      const offX = (Math.random()-0.5) * eyeR * 1.5;
-      const offY = (Math.random()-0.5) * eyeR * 0.8;
-      X.fillRect(lEyeX - eyeR*0.9 + offX, eyeY - eyeR*0.9 + offY, eyeR*(0.8+Math.random()*0.8), eyeR*(0.8+Math.random()*0.8));
-      X.fillRect(rEyeX - eyeR*0.9 + offX, eyeY - eyeR*0.9 + offY, eyeR*(0.8+Math.random()*0.8), eyeR*(0.8+Math.random()*0.8));
+    // ── GLITCH: broken scattered pixel blocks ──
+    for (let i = 0; i < 5; i++) {
+      const shift = (Math.random() - 0.5) * px * 6;
+      const shiftY = (Math.random() - 0.5) * px * 3;
+      const bw = px * (1 + Math.floor(Math.random() * 3));
+      const bh = px * (1 + Math.floor(Math.random() * 2));
+      X.fillStyle = Math.random() > 0.35 ? '#fff' : 'rgba(255,255,255,0.35)';
+      X.fillRect(lEX - px + shift + gx*2, eyeY - px + shiftY, bw, bh);
+      X.fillRect(rEX - px + shift + gx*2, eyeY - px + shiftY, bw, bh);
     }
+    // Broken mouth lines
+    X.fillStyle = '#fff';
+    X.fillRect(mCX - px*3 + gx*2, mY, px*2, px);
+    X.fillRect(mCX + px   - gx,   mY, px*3, px);
+
   } else {
-    // Normal: solid square pixel eyes
+    // ── NORMAL: solid filled eyes with dark pupils ──
     X.fillStyle = '#fff';
-    X.fillRect(lEyeX - eyeR, eyeY - eyeR, eyeR*2, eyeR*2);
-    X.fillRect(rEyeX - eyeR, eyeY - eyeR, eyeR*2, eyeR*2);
-    // Pupil (small dark square)
+    X.fillRect(lEX - px*2 + gx, eyeY - px*2, px*4, px*4);
+    X.fillRect(rEX - px*2 + gx, eyeY - px*2, px*4, px*4);
+    // Dark pupils
     X.fillStyle = '#000';
-    const pupil = eyeR * 0.5;
-    X.fillRect(lEyeX - pupil/2, eyeY - pupil/2, pupil, pupil);
-    X.fillRect(rEyeX - pupil/2, eyeY - pupil/2, pupil, pupil);
-  }
-
-  // --- Draw Mouth ---
-  const mX = fCX + ox * 0.5;
-  const mY = mouthY + oy * 0.5;
-
-  if (mode === 'happy') {
-    // Smile arc
-    X.strokeStyle = '#fff';
-    X.lineWidth = Math.max(3, eyeR * 0.5);
-    X.beginPath(); X.arc(mX, mY - mouthW*0.25, mouthW*0.5, 0, Math.PI); X.stroke();
-  } else if (mode === 'surprised') {
-    // Open O
-    X.strokeStyle = '#fff';
-    X.lineWidth = Math.max(3, eyeR * 0.45);
-    X.beginPath(); X.arc(mX, mY, mouthW*0.3, 0, Math.PI*2); X.stroke();
-  } else if (mode === 'glitch') {
-    // Zigzag mouth
-    X.strokeStyle = '#fff';
-    X.lineWidth = Math.max(2, eyeR * 0.4);
-    X.beginPath();
-    X.moveTo(mX - mouthW/2, mY);
-    const segs = 6;
-    for (let i = 0; i <= segs; i++) {
-      const mx2 = mX - mouthW/2 + (mouthW/segs)*i;
-      const my2 = mY + (i%2===0?-1:1) * mouthW * 0.12 + (Math.random()-0.5)*eyeR*0.5;
-      X.lineTo(mx2, my2);
-    }
-    X.stroke();
-  } else if (mode === 'blink') {
-    // Small line mouth
+    X.fillRect(lEX - px + gx, eyeY - px, px*2, px*2);
+    X.fillRect(rEX - px + gx, eyeY - px, px*2, px*2);
+    // Neutral pixel mouth (3 segments)
     X.fillStyle = '#fff';
-    X.fillRect(mX - mouthW*0.25, mY - 3*sc, mouthW*0.5, 5*sc);
-  } else {
-    // Normal flat mouth
-    X.fillStyle = '#fff';
-    X.fillRect(mX - mouthW/2, mY - 4*sc, mouthW, 8*sc);
-    // Gaps for pixel look
-    X.fillStyle = '#000';
-    X.fillRect(mX - mouthW*0.1, mY - 4*sc, mouthW*0.2, 8*sc);
+    X.fillRect(mCX - px*3, mY, px*2, px);
+    X.fillRect(mCX - px,   mY, px*2, px);
+    X.fillRect(mCX + px,   mY, px*2, px);
   }
 
-  // Flicker overlay on glitch
-  if (faceGlitch > 0.3) {
-    X.fillStyle = `rgba(255,255,255,${faceGlitch * 0.08})`;
-    X.fillRect(fCX - 120*sc, fCY - 100*sc, 240*sc, 200*sc);
+  // Glitch screen flicker
+  if (faceGlitch > 0.4 && Math.random() < 0.3) {
+    X.fillStyle = `rgba(255,255,255,${faceGlitch * 0.06})`;
+    X.fillRect(lx + ls*0.27, ly + ls*0.23, ls*0.34, ls*0.35);
   }
-
-  X.restore();
 }
 
 
