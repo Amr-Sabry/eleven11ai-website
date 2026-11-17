@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Eleven11 — film · 08 RADIO</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}#out{display:block}#gl{position:absolute;left:-99999px;top:0}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+</head><body>
+<canvas id="out"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+/* ============ setup ============ */
+const Q = new URLSearchParams(location.search), FPS = 30; let FW = +(Q.get('w') || innerWidth), FH = +(Q.get('h') || innerHeight);
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1); renderer.setSize(FW, FH); renderer.domElement.id = 'gl'; document.body.appendChild(renderer.domElement);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const out = document.getElementById('out'); out.width = FW; out.height = FH; const octx = out.getContext('2d');
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x000000);
+const camera = new THREE.PerspectiveCamera(30, FW / FH, .05, 100);
+
+// studio environment: black room with softbox strips — this is what draws the clean highlight lines on metal and glass
+const pmrem = new THREE.PMREMGenerator(renderer);
+function studioEnv() {
+  const s = new THREE.Scene(); s.background = new THREE.Color(0);
+  const box = (w, h, pos, I) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(I, I, I), side: THREE.DoubleSide })); m.position.set(...pos); m.lookAt(0, 0, 0); s.add(m); };
+  box(9, 3.2, [0, 6.5, 1.5], 3.2);    // big top softbox
+  box(.9, 8, [6.5, 1, -.5], 4);       // right strip
+  box(.6, 8, [-6.5, 1.6, -2.5], 5);   // left strip
+  box(6, 6, [-5, 2.5, 5], .35);       // broad front-left card: soft gradient across flat faces
+  box(6, .35, [0, -.8, 7], 1.2);      // low front kicker
+  box(.4, 5, [2.5, 3, -6.5], 3.5);    // back accent strip
+  return pmrem.fromScene(s, .015).texture;
+}
+scene.environment = studioEnv(); scene.environmentIntensity = 1;
+
+const key = new THREE.SpotLight(0xfff6ec, 0, 0, .55, .95, 0); key.position.set(4.5, 6, 5.5); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -.0002; key.shadow.normalBias = .015; key.shadow.camera.near = 2; key.shadow.camera.far = 25; scene.add(key, key.target);
+const rimL = new THREE.DirectionalLight(0xdbe4ff, 0); rimL.position.set(-6, 2.5, -6); scene.add(rimL);
+const rimR = new THREE.DirectionalLight(0xffffff, 0); rimR.position.set(6.5, 1.5, -5); scene.add(rimR);
+
+/* ============ helpers ============ */
+const OR = '#FF5A1F', INK = '#f2efe8', TYPE = '"DejaVu Sans Mono","SF Mono",Menlo,monospace';
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, k) => a + (b - a) * k;
+const smooth = k => (k = clamp(k), k * k * (3 - 2 * k));
+const eio = k => (k = clamp(k), k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+const eoutExpo = k => (k = clamp(k), k === 1 ? 1 : 1 - Math.pow(2, -10 * k));
+const eoutBack = (k, s = 1.25) => (k = clamp(k), 1 + (s + 1) * Math.pow(k - 1, 3) + s * Math.pow(k - 1, 2));
+const einExpo = k => (k = clamp(k), k === 0 ? 0 : Math.pow(2, 10 * k - 10));
+let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+function canvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function tex(c, srgb = true) { const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t; }
+function type(c, s, x, y, h, col, align = 'center', w = 700) { c.font = `${w} ${Math.round(h)}px ${TYPE}`; try { c.letterSpacing = Math.round(h * .1) + 'px'; } catch (e) { } c.textAlign = align; c.textBaseline = 'middle'; c.fillStyle = col; c.fillText(s, x, y); }
+function rr(P, w, d, r, cx = 0, cz = 0) { const x0 = cx - w / 2, x1 = cx + w / 2, y0 = -cz - d / 2, y1 = -cz + d / 2; r = Math.min(r, w / 2 - 1e-4, d / 2 - 1e-4);
+  P.moveTo(x0 + r, y0); P.lineTo(x1 - r, y0); P.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false); P.lineTo(x1, y1 - r); P.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false);
+  P.lineTo(x0 + r, y1); P.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false); P.lineTo(x0, y0 + r); P.absarc(x0 + r, y0 + r, r, Math.PI, 1.5 * Math.PI, false); return P; }
+function circ(P, cx, cz, r) { P.absarc(cx, -cz, r, 0, Math.PI * 2, true); return P; }
+function extrude(shape, depth, bev = .005) { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bev > 0, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 18 }); g.rotateX(-Math.PI / 2); return g; }
+function mesh(g, m, parent, x = 0, y = 0, z = 0) { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; parent.add(o); return o; }
+function rod(parent, a, b, r, m) { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), L = A.distanceTo(B); const o = mesh(new THREE.CylinderGeometry(r, r, L, 10), m, parent); o.position.copy(A).add(B).multiplyScalar(.5); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); return o; }
+function decal(parent, w, d, c, x, y, z, { emissive = false, rough = .6 } = {}) { const t = tex(c); const m = new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: rough, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2 }); if (emissive) { m.emissive = new THREE.Color(1, 1, 1); m.emissiveMap = t; m.emissiveIntensity = 0; } const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); p.rotation.x = -Math.PI / 2; p.position.set(x, y, z); p.receiveShadow = true; parent.add(p); return p; }
+
+/* ============ materials ============ */
+const M = {
+  shell: new THREE.MeshPhysicalMaterial({ color: 0x232427, metalness: .72, roughness: .4, clearcoat: .25, clearcoatRoughness: .5 }),
+  face: new THREE.MeshPhysicalMaterial({ color: 0x2f3033, metalness: .35, roughness: .44, clearcoat: .3, clearcoatRoughness: .4 }),
+  alu: new THREE.MeshPhysicalMaterial({ color: 0xbfc1c5, metalness: 1, roughness: .32, anisotropy: .8, anisotropyRotation: 0 }),
+  steel: new THREE.MeshStandardMaterial({ color: 0x8e9095, metalness: 1, roughness: .32 }),
+  chrome: new THREE.MeshStandardMaterial({ color: 0xd8dade, metalness: 1, roughness: .12 }),
+  darkSteel: new THREE.MeshStandardMaterial({ color: 0x3a3b3e, metalness: .9, roughness: .38 }),
+  cap: new THREE.MeshPhysicalMaterial({ color: 0x1c1c1f, metalness: 0, roughness: .5, clearcoat: .4, clearcoatRoughness: .35 }),
+  orange: new THREE.MeshPhysicalMaterial({ color: 0xff5a1f, metalness: 0, roughness: .42, clearcoat: .5, clearcoatRoughness: .3, emissive: 0xff5a1f, emissiveIntensity: 0 }),
+  black: new THREE.MeshStandardMaterial({ color: 0x0b0b0c, metalness: .1, roughness: .7 }),
+  chip: new THREE.MeshStandardMaterial({ color: 0x121214, metalness: .2, roughness: .45 }),
+  paper: new THREE.MeshStandardMaterial({ color: 0x161617, metalness: 0, roughness: .88, side: THREE.DoubleSide }),
+  rubber: new THREE.MeshStandardMaterial({ color: 0x0f0f10, metalness: 0, roughness: .75 }),
+  white: new THREE.MeshStandardMaterial({ color: 0xe9e6df, metalness: 0, roughness: .55 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0, roughness: .04, transparent: true, opacity: .14, clearcoat: 1, clearcoatRoughness: .02, envMapIntensity: 2.2, depthWrite: false }),
+  rib: new THREE.MeshStandardMaterial({ color: 0x1d1e20, metalness: .4, roughness: .62 }),
+  led: new THREE.MeshStandardMaterial({ color: 0x5a1e08, emissive: 0xff5a1f, emissiveIntensity: 0, roughness: .3 }),
+};
+
+/* ============ the device: 08 RADIO as a real object ============ */
+const W = 2, D = 1, R = .1;
+const root = new THREE.Group(), tilt = new THREE.Group(), lean = new THREE.Group(), spin = new THREE.Group(), body = new THREE.Group();
+scene.add(root); root.add(tilt); tilt.add(lean); lean.add(spin); spin.add(body); body.position.y = -.24;
+const LAYERS = []; const layer = (name, idx) => { const g = new THREE.Group(); g.name = name; g.userData.idx = idx; body.add(g); LAYERS.push(g); return g; };
+// bottom → top; the explode spreads them along the device's own normal
+const Lshell = layer('shell', 0), Lbatt = layer('battery', 1), Lspk = layer('speaker', 2), Lpcb = layer('pcb', 2), Lframe = layer('frame', 3), Ldisp = layer('displays', 4), Lface = layer('face', 5), Lglass = layer('glass', 5.42), Lkeys = layer('keys', 6), Lknob = layer('knob', 6.45), Lscrew = layer('screws', 7.1);
+
+// --- rear shell: floor + walls + bosses + side port
+{ const floor = extrude(rr(new THREE.Shape(), W - .012, D - .012, R), .03, .006); mesh(floor, M.shell, Lshell, 0, .006, 0);
+  const ring = rr(new THREE.Shape(), W - .012, D - .012, R); ring.holes.push(rr(new THREE.Path(), W - .09, D - .09, R - .04));
+  mesh(extrude(ring, .19, .006), M.shell, Lshell, 0, .045, 0);
+  [[-.9, -.4], [.9, -.4], [-.9, .4], [.9, .4]].forEach(([x, z]) => { mesh(new THREE.CylinderGeometry(.032, .036, .2, 24), M.darkSteel, Lshell, x, .14, z); mesh(new THREE.CylinderGeometry(.013, .013, .202, 12), M.black, Lshell, x, .141, z); });
+  for (let i = 0; i < 9; i++) mesh(new THREE.BoxGeometry(.012, .03, D - .14), M.rib, Lshell, -.8 + i * .2, .05, 0); // floor ribs
+  // USB-C on the right wall
+  const port = canvas(256, 96), c = port.getContext('2d'); c.fillStyle = '#050505'; c.beginPath(); c.roundRect(18, 18, 220, 60, 30); c.fill(); c.fillStyle = '#222'; c.fillRect(70, 42, 116, 12);
+  const pm = new THREE.Mesh(new THREE.PlaneGeometry(.16, .06), new THREE.MeshStandardMaterial({ map: tex(port), transparent: true, roughness: .4 })); pm.rotation.y = Math.PI / 2; pm.position.set(W / 2 - .0, .14, .1); Lshell.add(pm);
+}
+// --- battery
+{ mesh(new RoundedBoxGeometry(.9, .13, .62, 4, .02), M.black, Lbatt, .36, .14, .03);
+  const c = canvas(900, 620), x = c.getContext('2d'); x.fillStyle = '#121213'; x.fillRect(0, 0, 900, 620); x.fillStyle = OR; x.fillRect(0, 470, 900, 26);
+  type(x, 'E11 CELL', 60, 110, 70, '#e9e6df', 'left'); type(x, 'Li-ion  3.7V  2400mAh', 60, 200, 38, '#8d8a84', 'left'); type(x, '8.88Wh · 01', 60, 260, 38, '#8d8a84', 'left'); type(x, 'ELEVEN11 · LAB', 60, 400, 34, '#6d6a65', 'left'); type(x, '+', 820, 110, 70, OR); type(x, '−', 820, 400, 70, '#8d8a84');
+  decal(Lbatt, .86, .58, c, .36, .2055, .03);
+  mesh(new THREE.BoxGeometry(.07, .03, .05), M.white, Lbatt, .84, .22, -.2); // JST plug
+}
+// --- speaker driver (cone, surround, basket, magnet)
+{ const g = new THREE.Group(); g.position.set(-.64, .345, -.1); Lspk.add(g);
+  const cone = new THREE.LatheGeometry([[.07, -.095], [.09, -.085], [.14, -.06], [.19, -.032], [.222, -.012]].map(([r, y]) => new THREE.Vector2(r, y)), 72); mesh(cone, M.paper, g);
+  const sur = mesh(new THREE.TorusGeometry(.234, .013, 14, 96), M.rubber, g, 0, -.01, 0); sur.rotation.x = Math.PI / 2;
+  const ring = new THREE.Shape(); circ(ring, 0, 0, .275); ring.holes.push(circ(new THREE.Path(), 0, 0, .246)); mesh(extrude(ring, .01, .002), M.steel, g, 0, -.012, 0);
+  const dust = mesh(new THREE.SphereGeometry(.07, 40, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.chrome, g, 0, -.095, 0); dust.scale.y = .45;
+  mesh(new THREE.CylinderGeometry(.118, .118, .016, 48), M.darkSteel, g, 0, -.112, 0);
+  mesh(new THREE.CylinderGeometry(.11, .11, .065, 64), M.chrome, g, 0, -.153, 0);
+  mesh(new THREE.CylinderGeometry(.118, .118, .012, 48), M.darkSteel, g, 0, -.192, 0);
+  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + Math.PI / 4; rod(g, [Math.cos(a) * .255, -.012, Math.sin(a) * .255], [Math.cos(a) * .11, -.11, Math.sin(a) * .11], .009, M.steel); }
+  mesh(new THREE.BoxGeometry(.05, .02, .03), M.white, g, .17, -.06, .16); // terminal
+}
+// --- PCB with real parts
+const pcbTop = .308;
+{ const PW = 1.28, PD = .88, PX = .3;
+  const CW = 2560, CH = 1760, c = canvas(CW, CH), x = c.getContext('2d'); x.fillStyle = '#0a0c0b'; x.fillRect(0, 0, CW, CH);
+  const px = v => (v - PX + PW / 2) / PW * CW, pz = v => (v + PD / 2) / PD * CH, U = CW / PW;
+  const KEEP = [[0, -.05, .27, .27], [-.2, .14, .15, .11], [.62, .02, .14, .12], [.42, -.25, .24, .24], [.2, .1, .1, .06], [.62, -.12, .1, .1], [.84, -.27, .17, .17], [.84, .1, .1, .1], [.84, .355, .1, .1], [-.21, .42, .24, .05],
+    ...[-.26, -.02, .22, .46].flatMap(k => [[k, .33, .1, .1], [k, .19, .05, .04]]), ...[[-.24, -.3], [-.14, -.32], [.66, .2], [.76, .2], [-.3, .32]].map(([a, b]) => [a, b, .06, .06])];
+  const free = (X, Z, m = 0) => X > -.32 && X < .92 && Z > -.42 && Z < .42 && !KEEP.some(([kx, kz, kw, kd]) => Math.abs(X - kx) < kw / 2 + m && Math.abs(Z - kz) < kd / 2 + m);
+  seed = 7; x.fillStyle = '#0f1312'; for (let i = 0; i < 7; i++) { const X = px(-.3 + rnd() * 1.1), Z = pz(-.4 + rnd() * .7); x.beginPath(); x.roundRect(X, Z, 160 + rnd() * 380, 120 + rnd() * 260, 18); x.fill(); } // copper pours under the mask
+  x.lineCap = 'round'; x.lineJoin = 'round';
+  const via = (X, Z) => { x.fillStyle = '#c99a4c'; x.beginPath(); x.arc(X, Z, 9, 0, 7); x.fill(); x.fillStyle = '#050505'; x.beginPath(); x.arc(X, Z, 3.5, 0, 7); x.fill(); };
+  // a bus: n parallel traces leaving a row of pins, staggered so they turn 90° (with 45° chamfers) without ever crossing
+  const bus = (X0, Z0, out, perp, n, sp, len1, len2, turn, wdt = 3) => { x.strokeStyle = '#b08642'; x.lineWidth = wdt;
+    for (let i = 0; i < n; i++) { const st = turn < 0 ? i : n - 1 - i, a = len1 + st * sp, ch = Math.min(sp * .9, 26);
+      const sx = X0 + perp[0] * i * sp, sz = Z0 + perp[1] * i * sp, cx = sx + out[0] * a, cz = sz + out[1] * a;
+      const ex = cx + perp[0] * turn * (len2 + st * sp * .3), ez = cz + perp[1] * turn * (len2 + st * sp * .3);
+      x.beginPath(); x.moveTo(sx, sz); x.lineTo(cx - out[0] * ch, cz - out[1] * ch); x.lineTo(cx + perp[0] * turn * ch, cz + perp[1] * turn * ch); x.lineTo(ex, ez); x.stroke(); via(ex, ez); } };
+  const pinRow = (cx, cz, w, d, side) => { const p = 8, z = cz + side * (d / 2 + .006); return { X0: px(cx - w / 2 + w * .5 / p), Z0: pz(z), sp: w / p * U }; };
+  const chipBus = (cx, cz, w, d, len1, len2, turnTop, turnBot, wdt) => { const T = pinRow(cx, cz, w, d, -1), B = pinRow(cx, cz, w, d, 1); bus(T.X0, T.Z0, [0, -1], [1, 0], 8, T.sp, len1, len2, turnTop, wdt); bus(B.X0, B.Z0, [0, 1], [1, 0], 8, B.sp, len1, len2, turnBot, wdt); };
+  chipBus(0, -.05, .22, .22, 40, 260, -1, 1, 4); chipBus(-.2, .14, .11, .07, 30, 160, -1, -1, 2.5); chipBus(.62, .02, .1, .08, 30, 140, 1, 1, 2.5);
+  // long orthogonal runs with chamfered corners, power rails thicker
+  for (let i = 0; i < 46; i++) { let X = px(-.32 + rnd() * 1.24), Z = pz(-.42 + rnd() * .84); const pw = rnd() < .18; x.strokeStyle = pw ? '#c99a4c' : '#a07a3c'; x.lineWidth = pw ? 10 : 3; x.beginPath(); x.moveTo(X, Z); via(X, Z); x.beginPath(); x.moveTo(X, Z);
+    let hor = rnd() < .5; for (let sg = 0; sg < 3; sg++) { const L = (80 + rnd() * 380) * (rnd() < .5 ? -1 : 1), c2 = 18 * Math.sign(L); if (hor) { X += L - c2; x.lineTo(X, Z); X += c2; Z += 18 * (rnd() < .5 ? -1 : 1); } else { Z += L - c2; x.lineTo(X, Z); Z += c2; X += 18 * (rnd() < .5 ? -1 : 1); } x.lineTo(X, Z); hor = !hor; } x.stroke(); via(X, Z); }
+  x.fillStyle = '#c99a4c'; for (let i = 0; i < 40; i++) { x.beginPath(); x.arc(70 + i * 60, CH - 46, 13, 0, 7); x.fill(); } // edge test points
+  x.strokeStyle = '#dcd8cf'; x.lineWidth = 3;
+  const silk = (cx, cz, w, d, ref) => { x.strokeRect(px(cx - w / 2), pz(cz - d / 2), w * U, d * U); type(x, ref, px(cx - w / 2), pz(cz - d / 2) - 22, 26, '#dcd8cf', 'left', 600); };
+  silk(0, -.05, .25, .25, 'U1'); silk(-.2, .14, .13, .09, 'U4'); silk(.62, .02, .12, .1, 'U3'); silk(.42, -.25, .22, .22, 'U2 · FM'); silk(.2, .1, .09, .05, 'Y1'); silk(.62, -.12, .09, .09, 'L1'); silk(.84, -.27, .15, .15, 'ENC1');
+  type(x, 'E11-RADIO  REV 0.6', 60, 70, 52, '#dcd8cf', 'left', 700); type(x, '08', CW - 60, 70, 60, '#dcd8cf', 'right'); type(x, 'ELEVEN11 · LAB · 2026', 60, CH - 110, 36, '#8b8780', 'left', 500);
+  // tiny SMD parts, instanced
+  const smd = []; let guard = 0; while (smd.length < 90 && guard++ < 4000) { const X = -.32 + rnd() * 1.24, Z = -.42 + rnd() * .84; if (free(X, Z, .015) && smd.every(([a, b]) => Math.hypot(a - X, b - Z) > .035)) smd.push([X, Z, rnd() < .5 ? 0 : Math.PI / 2, rnd() < .55]); }
+  const bodyG = new THREE.BoxGeometry(.02, .008, .01), capG = new THREE.BoxGeometry(.004, .0085, .0105);
+  const IR = new THREE.InstancedMesh(bodyG, new THREE.MeshStandardMaterial({ color: 0x141414, roughness: .5 }), smd.length), IC = new THREE.InstancedMesh(bodyG, new THREE.MeshStandardMaterial({ color: 0x7a6548, roughness: .55 }), smd.length), IE = new THREE.InstancedMesh(capG, M.steel, smd.length * 2);
+  const o3 = new THREE.Object3D(); let nr = 0, nc = 0, ne = 0;
+  smd.forEach(([X, Z, r, isR]) => { o3.position.set(X, pcbTop + .004, Z); o3.rotation.set(0, r, 0); o3.updateMatrix(); (isR ? IR : IC).setMatrixAt(isR ? nr++ : nc++, o3.matrix);
+    for (const sg of [-1, 1]) { o3.position.set(X + Math.cos(r) * .01 * sg, pcbTop + .004, Z - Math.sin(r) * .01 * sg); o3.updateMatrix(); IE.setMatrixAt(ne++, o3.matrix); }
+    x.fillStyle = '#c99a4c'; const a = px(X), b = pz(Z); if (r) { x.fillRect(a - 7, b - 26, 14, 12); x.fillRect(a - 7, b + 14, 14, 12); } else { x.fillRect(a - 26, b - 7, 12, 14); x.fillRect(a + 14, b - 7, 12, 14); } });
+  IR.count = nr; IC.count = nc; IE.count = ne; [IR, IC, IE].forEach(m => { m.castShadow = m.receiveShadow = true; Lpcb.add(m); });
+  const pcb = mesh(new RoundedBoxGeometry(PW, .016, PD, 3, .006), new THREE.MeshStandardMaterial({ color: 0x0b0d0c, roughness: .55, metalness: .1 }), Lpcb, PX, .3, 0);
+  decal(Lpcb, PW - .01, PD - .01, c, PX, pcbTop + .0005, 0, { rough: .4 });
+  const chipLabel = (w, d, lines) => { const cv = canvas(256, Math.round(256 * d / w)), cx = cv.getContext('2d'); lines.forEach((l, i) => type(cx, l, 128, cv.height * (i + 1) / (lines.length + 1), Math.min(46, 200 / l.length * 1.4), i ? '#77746e' : '#c9c6bf', 'center', i ? 500 : 700)); cx.fillStyle = '#77746e'; cx.beginPath(); cx.arc(22, 22, 8, 0, 7); cx.fill(); return cv; };
+  const chip = (cx, cz, w, h, d, lines) => { mesh(new RoundedBoxGeometry(w, h, d, 2, .004), M.chip, Lpcb, cx, pcbTop + h / 2, cz); decal(Lpcb, w * .92, d * .92, chipLabel(w, d, lines), cx, pcbTop + h + .0006, cz, { rough: .4 }); for (let i = 0; i < 8; i++) for (const s of [-1, 1]) { mesh(new THREE.BoxGeometry(.006, .004, .018), M.steel, Lpcb, cx - w / 2 + w * (i + .5) / 8, pcbTop + .002, cz + s * (d / 2 + .006)); } };
+  chip(0, -.05, .22, .022, .22, ['E11 MCU', 'R1-2611', '1111']);
+  chip(-.2, .14, .11, .016, .07, ['FLASH', '16M']);
+  chip(.62, .02, .1, .016, .08, ['AMP', 'D-CLS']);
+  // RF shield can over the FM tuner
+  { const can = mesh(new RoundedBoxGeometry(.2, .03, .2, 2, .004), M.steel, Lpcb, .42, pcbTop + .015, -.25); const hc = canvas(256, 256), h = hc.getContext('2d'); h.fillStyle = '#000'; for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { h.beginPath(); h.arc(30 + i * 39, 30 + j * 39, 8, 0, 7); h.fill(); } type(h, 'FM', 128, 128, 50, '#000'); decal(Lpcb, .18, .18, hc, .42, pcbTop + .0305, -.25, { rough: .3 }); }
+  mesh(new RoundedBoxGeometry(.07, .022, .03, 2, .01), M.chrome, Lpcb, .2, pcbTop + .011, .1); // crystal
+  [[-.24, -.3], [-.14, -.32], [.66, .2], [.76, .2], [-.3, .32]].forEach(([cx, cz]) => { mesh(new THREE.CylinderGeometry(.024, .024, .045, 28), M.black, Lpcb, cx, pcbTop + .0225, cz); mesh(new THREE.CylinderGeometry(.022, .022, .003, 28), M.steel, Lpcb, cx, pcbTop + .046, cz); });
+  mesh(new RoundedBoxGeometry(.075, .03, .075, 2, .012), M.darkSteel, Lpcb, .62, pcbTop + .015, -.12); // inductor
+  // tactile switches under every key, encoder under the knob, SMD LEDs under the light pipes
+  [-.26, -.02, .22, .46].forEach(kx => { mesh(new THREE.BoxGeometry(.07, .028, .07), M.steel, Lpcb, kx, pcbTop + .014, .33); mesh(new THREE.CylinderGeometry(.02, .02, .02, 20), M.black, Lpcb, kx, pcbTop + .038, .33); });
+  [[.84, .1], [.84, .355]].forEach(([kx, kz]) => { mesh(new THREE.BoxGeometry(.07, .028, .07), M.steel, Lpcb, kx, pcbTop + .014, kz); mesh(new THREE.CylinderGeometry(.02, .02, .02, 20), M.black, Lpcb, kx, pcbTop + .038, kz); });
+  mesh(new THREE.BoxGeometry(.13, .04, .13), M.darkSteel, Lpcb, .84, pcbTop + .02, -.27); mesh(new THREE.CylinderGeometry(.022, .022, .08, 24), M.steel, Lpcb, .84, pcbTop + .08, -.27);
+  [-.26, -.02, .22, .46].forEach(kx => mesh(new THREE.BoxGeometry(.03, .012, .02), M.led, Lpcb, kx, pcbTop + .006, .19));
+  for (let i = 0; i < 8; i++) mesh(new THREE.BoxGeometry(.012, .05, .012), M.chrome, Lpcb, -.3 + i * .025, pcbTop + .025, .42); // header pins
+}
+// --- aluminum frame band + engraving
+{ const ring = rr(new THREE.Shape(), W - .012, D - .012, R); ring.holes.push(rr(new THREE.Path(), W - .07, D - .07, R - .03));
+  mesh(extrude(ring, .088, .006), M.alu, Lframe, 0, .258, 0);
+  const c = canvas(2048, 96), x = c.getContext('2d'); type(x, 'ELEVEN11  ·  08 RADIO  ·  BUILT IN THE LAB', 1024, 50, 40, '#3d3e41', 'center', 600);
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .075), new THREE.MeshStandardMaterial({ map: tex(c), transparent: true, roughness: .5, metalness: .4, polygonOffset: true, polygonOffsetFactor: -2 })); p.position.set(0, .308, D / 2 + .0005); Lframe.add(p);
+}
+// --- displays: backlit tuning dial with needle + dot-matrix module
+const dialMat = new THREE.MeshStandardMaterial({ roughness: .6, emissive: 0xffffff, emissiveIntensity: 0 });
+let needle, ledTex, ledCtx;
+{ const dc = canvas(1080, 204), x = dc.getContext('2d'); const g = x.createLinearGradient(0, 0, 0, 204); g.addColorStop(0, '#F3E3B4'); g.addColorStop(1, '#D9B56A'); x.fillStyle = g; x.fillRect(0, 0, 1080, 204);
+  x.fillStyle = '#2a2014'; const x0 = 50, x1 = 1030; x.fillRect(x0, 96, x1 - x0, 3);
+  for (let i = 0; i <= 100; i++) { const X = x0 + (x1 - x0) * i / 100, h = i % 10 === 0 ? 34 : i % 5 === 0 ? 22 : 12; x.fillRect(X - 1, 96 - h, i % 10 === 0 ? 3 : 2, h); }
+  for (let i = 0; i <= 10; i++) type(x, String(88 + i * 2), x0 + (x1 - x0) * i / 10, 32, 26, '#2a2014');
+  for (let i = 0; i < 12; i++) { const X = x0 + (x1 - x0) * i / 11; x.fillStyle = '#B5421A'; x.fillRect(X - 2, 112, 4, 30); }
+  type(x, 'FM · STEREO · 12 PRESETS', x0, 176, 24, '#5a4520', 'left'); type(x, 'MHZ', x1, 176, 24, '#5a4520', 'right');
+  const t = tex(dc); dialMat.map = t; dialMat.emissiveMap = t;
+  mesh(new THREE.BoxGeometry(.93, .018, .19), M.white, Ldisp, .2, .338, -.285);
+  const d = new THREE.Mesh(new THREE.PlaneGeometry(.9, .16), dialMat); d.rotation.x = -Math.PI / 2; d.position.set(.2, .3475, -.285); Ldisp.add(d);
+  needle = mesh(new THREE.BoxGeometry(.008, .006, .15), new THREE.MeshStandardMaterial({ color: 0x8a2a0c, emissive: 0xff5a1f, emissiveIntensity: 0 }), Ldisp, -.1, .352, -.285);
+  // dot matrix module
+  mesh(new THREE.BoxGeometry(.94, .02, .19), M.black, Ldisp, .2, .336, -.01);
+  const lc = canvas(40 * 14, 7 * 14); ledCtx = lc.getContext('2d'); ledTex = tex(lc);
+  const lm = new THREE.MeshStandardMaterial({ map: ledTex, emissive: 0xffffff, emissiveMap: ledTex, emissiveIntensity: 3.2, roughness: .35 });
+  const lp = new THREE.Mesh(new THREE.PlaneGeometry(.9, .1575), lm); lp.rotation.x = -Math.PI / 2; lp.position.set(.2, .3465, -.01); Ldisp.add(lp);
+  // flex cable from the screen down to the board
+  mesh(new THREE.BoxGeometry(.18, .002, .06), new THREE.MeshStandardMaterial({ color: 0xb06a1c, roughness: .4, metalness: .3 }), Ldisp, .55, .326, .1);
+}
+// --- face plate with real cut-outs + printed legends
+{ const s = rr(new THREE.Shape(), W - .022, D - .022, R - .006);
+  const hole = (w, d, r, x, z) => s.holes.push(rr(new THREE.Path(), w, d, r, x, z));
+  hole(.95, .21, .03, .2, -.285); hole(.95, .2, .03, .2, -.01);
+  [-.26, -.02, .22, .46].forEach(x => { hole(.19, .14, .03, x, .33); s.holes.push(circ(new THREE.Path(), x, .19, .022)); });
+  s.holes.push(circ(new THREE.Path(), .84, -.27, .135)); hole(.25, .13, .03, .84, .1); hole(.27, .11, .05, .84, .355);
+  for (let i = 0; i < 11; i++) hole(.46, .022, .011, -.64, -.34 + i * .045);
+  const g = extrude(s, .03, .005);
+  const c = canvas(2048, 1024), x = c.getContext('2d'); x.fillStyle = '#2b2c2f'; x.fillRect(0, 0, 2048, 1024);
+  const PX = v => (v / W + .5) * 2048, PZ = v => (v / D + .5) * 1024;
+  type(x, '08 RADIO', PX(-.93), PZ(.425), 58, INK, 'left'); type(x, 'TUNE', PX(.84), PZ(-.095), 40, INK); type(x, 'ON AIR', PX(.84), PZ(.25), 34, INK);
+  type(x, 'FM', PX(-.31), PZ(-.45), 30, '#7d7a74', 'left'); type(x, 'ELEVEN11', PX(-.64), PZ(.205), 30, '#7d7a74');
+  x.strokeStyle = '#4a4b4e'; x.lineWidth = 3; x.strokeRect(PX(-.9), PZ(-.38), PX(-.38) - PX(-.9), PZ(.16) - PZ(-.38));
+  const t = tex(c); t.repeat.set(1 / W, 1 / D); t.offset.set(.5, .5); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  const fm = M.face.clone(); fm.map = t; mesh(g, [fm, M.face], Lface, 0, .365, 0);
+}
+// --- glass over the dial and the screen
+{ mesh(new THREE.BoxGeometry(.93, .008, .19), M.glass, Lglass, .2, .386, -.285); mesh(new THREE.BoxGeometry(.93, .008, .18), M.glass, Lglass, .2, .386, -.01); }
+// --- keycaps with legends; ON AIR is the lamp key
+const keyLamps = [];
+{ const label = (w, d, s, col) => { const cv = canvas(256, Math.round(256 * d / w)), c = cv.getContext('2d'); type(c, s, 128, cv.height / 2, Math.min(cv.height * .42, 300 / s.length), col); return cv; };
+  ['DXB', 'CAI', 'RUH', 'WRLD'].forEach((s, i) => { const kx = [-.26, -.02, .22, .46][i]; mesh(new RoundedBoxGeometry(.17, .07, .12, 4, .018), M.cap, Lkeys, kx, .4, .33); decal(Lkeys, .15, .1, label(.15, .1, s, '#d9d7d1'), kx, .4355, .33); });
+  mesh(new RoundedBoxGeometry(.22, .06, .1, 4, .018), M.cap, Lkeys, .84, .395, .1); decal(Lkeys, .2, .08, label(.2, .08, 'LIST', '#d9d7d1'), .84, .4255, .1);
+  mesh(new RoundedBoxGeometry(.25, .06, .09, 4, .034), M.orange, Lkeys, .84, .395, .355);
+  // light pipes for the band LEDs (sit in the small holes)
+  [-.26, -.02, .22, .46].forEach((kx, i) => { const m = M.led.clone(); keyLamps.push(m); mesh(new THREE.CylinderGeometry(.018, .018, .05, 20), m, Lkeys, kx, .38, .19); });
+}
+// --- TUNE knob: machined aluminum, knurled, orange index dot
+{ const kc = canvas(1024, 32), x = kc.getContext('2d'); for (let i = 0; i < 128; i++) { x.fillStyle = i % 2 ? '#bdbfc3' : '#6c6e72'; x.fillRect(i * 8, 0, 8, 32); }
+  const km = M.alu.clone(); km.map = tex(kc); km.anisotropy = 0; km.roughness = .22; km.color.set(0xd4d6da);
+  mesh(new THREE.CylinderGeometry(.115, .118, .1, 128, 1, true), km, Lknob, .84, .415, -.27);
+  mesh(new THREE.CylinderGeometry(.113, .113, .008, 96), M.chrome, Lknob, .84, .466, -.27);
+  mesh(new THREE.CylinderGeometry(.06, .06, .003, 64), M.darkSteel, Lknob, .84, .4705, -.27);
+  mesh(new THREE.CylinderGeometry(.014, .014, .004, 24), M.orange, Lknob, .84, .471, -.27 - .085);
+  mesh(new THREE.CylinderGeometry(.128, .128, .012, 96), M.black, Lknob, .84, .368, -.27);
+}
+// --- screws
+{ [[-.935, -.445], [.935, -.445], [-.935, .445], [.935, .445]].forEach(([x, z]) => { const g = new THREE.Group(); g.position.set(x, .4, z); Lscrew.add(g);
+    mesh(new THREE.CylinderGeometry(.026, .028, .012, 32), M.steel, g, 0, .006, 0); mesh(new THREE.BoxGeometry(.034, .004, .006), M.black, g, 0, .0125, 0); mesh(new THREE.BoxGeometry(.006, .004, .034), M.black, g, 0, .0125, 0);
+    mesh(new THREE.CylinderGeometry(.011, .011, .14, 12), M.darkSteel, g, 0, -.07, 0); for (let i = 0; i < 8; i++) mesh(new THREE.TorusGeometry(.012, .002, 6, 16), M.darkSteel, g, 0, -.02 - i * .015, 0).rotation.x = Math.PI / 2; }); }
+
+/* ============ dot-matrix text ============ */
+const F5RAW = {
+  A: '.###.|#...#|#...#|#####|#...#|#...#|#...#', B: '####.|#...#|#...#|####.|#...#|#...#|####.', C: '.####|#....|#....|#....|#....|#....|.####', D: '####.|#...#|#...#|#...#|#...#|#...#|####.',
+  E: '#####|#....|#....|####.|#....|#....|#####', F: '#####|#....|#....|####.|#....|#....|#....', I: '#####|..#..|..#..|..#..|..#..|..#..|#####', L: '#....|#....|#....|#....|#....|#....|#####',
+  M: '#...#|##.##|#.#.#|#.#.#|#...#|#...#|#...#', N: '#...#|##..#|#.#.#|#..##|#...#|#...#|#...#', O: '.###.|#...#|#...#|#...#|#...#|#...#|.###.', R: '####.|#...#|#...#|####.|#.#..|#..#.|#...#',
+  V: '#...#|#...#|#...#|#...#|.#.#.|.#.#.|..#..', U: '#...#|#...#|#...#|#...#|#...#|#...#|.###.', S: '.####|#....|#....|.###.|....#|....#|####.', T: '#####|..#..|..#..|..#..|..#..|..#..|..#..',
+  0: '.###.|#...#|#..##|#.#.#|##..#|#...#|.###.', 1: '..#..|.##..|..#..|..#..|..#..|..#..|.###.', 8: '.###.|#...#|#...#|.###.|#...#|#...#|.###.', 9: '.###.|#...#|#...#|.####|....#|...#.|.##..',
+  '.': '.....|.....|.....|.....|.....|.##..|.##..', ' ': '.....|.....|.....|.....|.....|.....|.....', '·': '.....|.....|.....|..#..|.....|.....|.....' };
+const F5 = {}; for (const k in F5RAW) F5[k] = F5RAW[k].split('|');
+function drawLED(str, scroll, power) { const c = ledCtx, s = 14, cols = 40, rows = 7, buf = new Uint8Array(cols * rows); let x0 = -scroll;
+  for (const ch of str) { const g = F5[ch] || F5[' ']; for (let r = 0; r < 7; r++) for (let k = 0; k < 5; k++) if (g[r][k] === '#') { const X = x0 + k; if (X >= 0 && X < cols) buf[r * cols + X] = 1; } x0 += 6; }
+  c.fillStyle = '#030304'; c.fillRect(0, 0, cols * s, rows * s);
+  for (let i = 0; i < buf.length; i++) { const on = buf[i] && power > 0; c.fillStyle = on ? `rgba(255,246,236,${.25 + .75 * power})` : '#141417'; c.beginPath(); c.arc((i % cols) * s + s / 2, ((i / cols) | 0) * s + s / 2, s * .36, 0, 7); c.fill(); }
+  ledTex.needsUpdate = true; }
+
+/* ============ post ============ */
+const rt = new THREE.WebGLRenderTarget(FW, FH, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt); composer.setPixelRatio(1); composer.setSize(FW, FH);
+composer.addPass(new RenderPass(scene, camera));
+const bokeh = new BokehPass(scene, camera, { focus: 5, aperture: .018, maxblur: .014 }); bokeh.enabled = false; composer.addPass(bokeh);
+const bloom = new UnrealBloomPass(new THREE.Vector2(FW, FH), .5, .5, 2.4); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uVig: { value: .55 }, uGrain: { value: .035 }, uFade: { value: 1 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uT,uVig,uGrain,uFade; varying vec2 vUv;
+    float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233))+uT*91.7)*43758.5453); }
+    void main(){ vec3 c=texture2D(tDiffuse,vUv).rgb; vec2 q=vUv-.5; q.x*=1.6; float v=smoothstep(.95,.18,length(q)); c*=mix(1.,v,uVig);
+      float l=dot(c,vec3(.299,.587,.114)); c=mix(c, c*vec3(.94,.98,1.04), (1.-smoothstep(.0,.35,l))*.6); // cool the shadows a touch
+      c+= (h(vUv*1000.)-.5)*uGrain; gl_FragColor=vec4(c*uFade,1.); }` });
+composer.addPass(grade);
+window.setFrameSize = (w, h) => { FW = w; FH = h; renderer.setSize(FW, FH, false); composer.setSize(FW, FH); out.width = FW; out.height = FH; };
+
+/* ============ choreography (all from t, deterministic) ============ */
+const NL = LAYERS.length, MID = 3.5, GAP = .78;
+const pose = { a: .95, b: .1, c: -.6, k: 0, cam: [0, 0, 6], tgt: [0, 0, 0], fov: 30, key: 1, env: 1, rim: 1, envRot: 0, power: 0, needle: 0, dof: null, fade: 1, title: 0 };
+function explodeTo(kAt) { LAYERS.forEach((g, i) => { const d = g.userData.idx - MID, k = kAt(i, d); g.position.y = d * GAP * k; g.rotation.y = d * .035 * k; g.position.x = d * .015 * k; }); }
+const SHOTS = [
+  // A · silhouette → light sweeps the radio into view
+  [0, 2.6, t => { const u = t / 2.6; Object.assign(pose, { a: .98, b: .14, c: lerp(-.95, -.55, eio(u)), cam: [lerp(.45, .15, u), lerp(.3, .15, u), lerp(5.2, 4.4, eio(u))], tgt: [0, .02, 0], fov: 30,
+      key: smooth((t - .6) / 1.6), env: lerp(.06, .95, smooth((t - .4) / 1.8)), rim: 1, envRot: lerp(-1.4, -.2, eio(u)) }); explodeTo(() => 0); }],
+  // B · the snap: it comes apart along its own axis, hangs in the air
+  [2.6, 6.0, t => { const u = (t - 2.6) / 3.4; Object.assign(pose, { a: .62, b: .9, c: lerp(-.62, -.3, u), cam: [lerp(.1, .5, u), lerp(-.05, .1, u), 6.9 + 2.5 * eoutExpo((t - 2.95) / 1.3) - .45 * smooth((t - 4) / 2)], tgt: [0, .05, 0], fov: 30, key: 1.25, keyPos: [-1, 7, 4.5], env: 1, rim: 1, envRot: lerp(-.2, .5, u) });
+      explodeTo((i, d) => eoutBack((t - 2.95 - Math.abs(d) * .022) / .6, 1.15)); }],
+  // C · macro inside: the board, the chips, light crossing them
+  [6.0, 8.0, t => { const u = (t - 6) / 2; Object.assign(pose, { a: .62, b: .9, c: lerp(-.3, -.22, u), fov: 22, key: 1, env: 1.15, rim: .8, envRot: lerp(.4, 1.6, u) }); explodeTo(() => 1);
+      place(); const sl = lerp(.16, -.2, eio(u)), mcu = Lpcb.localToWorld(new THREE.Vector3(.02 + sl * .4, pcbTop + .02, -.03)), cam = Lpcb.localToWorld(new THREE.Vector3(.1 + sl, pcbTop + .5, .78)); pose.cam = cam.toArray(); pose.tgt = mcu.toArray(); pose.dof = mcu; pose.keyPos = [-1, 7, 4]; }],
+  // D · whip and snap shut
+  [8.0, 9.6, t => { const u = (t - 8) / 1.6; Object.assign(pose, { a: lerp(.62, .98, eio(u)), b: lerp(.9, .14, eio(u)), c: lerp(-.22, -.22 + Math.PI * 2 - .2, eio(u)), cam: [.2, .15, lerp(8.9, 5.2, eio(u))], tgt: [0, 0, 0], fov: 30, key: 1, env: 1, rim: 1, envRot: lerp(.5, -.4, u) });
+      explodeTo((i, d) => 1 - einExpo((t - 8.25 + Math.abs(d) * .015) / .5)); }],
+  // E · hero: it powers on, then the light leaves it
+  [9.6, 12.4, t => { const u = (t - 9.6) / 2.8; Object.assign(pose, { a: .98, b: .14, c: lerp(-.42, -.3, u), cam: [lerp(-.15, .1, u), .18, lerp(5.6, 5.1, u)], tgt: [0, .03, 0], fov: 30,
+      key: 1 - smooth((t - 11.3) / 1), env: lerp(1, .07, smooth((t - 11.3) / 1)), rim: 1, envRot: lerp(-.4, .2, u), power: smooth((t - 10) / .5), needle: eio((t - 10.1) / 1.1) }); explodeTo(() => 0); }],
+  // F · end card
+  [12.4, 14.4, t => { Object.assign(pose, { key: 0, env: .04, rim: lerp(1, 0, smooth((t - 12.4) / .8)), power: 1 - smooth((t - 12.4) / .5), fade: 1 - smooth((t - 12.4) / .55), title: smooth((t - 12.9) / .6) * (1 - smooth((t - 14.0) / .4)) }); }],
+];
+function place() { tilt.rotation.z = pose.b; lean.rotation.x = pose.a; spin.rotation.y = pose.c; root.updateMatrixWorld(true); }
+function setTime(t) {
+  pose.dof = null; pose.title = 0; pose.fade = 1; pose.keyPos = [4.5, 6, 5.5];
+  const S = SHOTS.find(s => t >= s[0] && t < s[1]) || SHOTS[SHOTS.length - 1];
+  tilt.rotation.z = pose.b; lean.rotation.x = pose.a; spin.rotation.y = pose.c; // apply previous pose first so shots that measure the device see it posed
+  S[2](t);
+  tilt.rotation.z = pose.b; lean.rotation.x = pose.a; spin.rotation.y = pose.c; place();
+  camera.position.set(...pose.cam); camera.fov = pose.fov; camera.aspect = FW / FH; camera.updateProjectionMatrix(); camera.lookAt(...pose.tgt);
+  key.intensity = 3.2 * pose.key; key.position.set(...pose.keyPos); rimL.intensity = 2.6 * pose.rim; rimR.intensity = 1.8 * pose.rim; scene.environmentIntensity = pose.env; scene.environmentRotation.set(0, pose.envRot, 0);
+  // power: dial backlight, needle, LED screen, ON AIR lamp
+  const p = pose.power; dialMat.emissiveIntensity = p * 1.5; dialMat.color.setScalar(lerp(.32, 1, p)); needle.material.emissiveIntensity = p * 7; needle.position.x = .2 - .43 + .86 * (.08 + .3 * pose.needle);
+  M.orange.emissiveIntensity = p * 5; keyLamps.forEach((m, i) => m.emissiveIntensity = i === 0 ? p * 9 : 0);
+  drawLED(p > .01 ? '08 RADIO · LIVE · ELEVEN11 FM   ' : '', p > .01 ? Math.floor(Math.max(0, t - 10.4) * 14) % 192 : 0, p);
+  if (pose.dof) { bokeh.enabled = true; bokeh.uniforms.focus.value = camera.position.distanceTo(pose.dof); } else bokeh.enabled = false;
+  grade.uniforms.uT.value = t; grade.uniforms.uFade.value = pose.fade;
+}
+const END = 14.4;
+function overlay(ctx) { if (pose.title <= 0) return; ctx.save(); ctx.globalAlpha = pose.title; type(ctx, 'ELEVEN11', FW / 2, FH * .47, FH * .07, '#e9e6df', 'center', 700); type(ctx, 'THE LAB  ·  ELEVEN11AI.COM/LAB', FW / 2, FH * .56, FH * .022, '#8c8983', 'center', 500); ctx.fillStyle = OR; ctx.fillRect(FW / 2 - FH * .02, FH * .605, FH * .04, FH * .006); ctx.restore(); }
+window.renderAt = (t, samples = 1, shutter = .5) => {
+  for (let s = 0; s < samples; s++) { const tt = samples > 1 ? t + ((s + .5) / samples - .5) * shutter / FPS : t; setTime(tt); composer.render(); octx.globalAlpha = 1 / (s + 1); octx.drawImage(renderer.domElement, 0, 0); }
+  octx.globalAlpha = 1; overlay(octx); return true; };
+window.frameData = (q = .95) => out.toDataURL('image/jpeg', q);
+window.blurAt = t => { // motion blur only where things move fast
+  if (t >= 2.9 && t < 3.7) return 6; if (t >= 8.1 && t < 9.4) return 7; return 1; };
+window.END = END; window.FPS = FPS;
+renderAt(+(Q.get('t') || 1.8)); window.READY = true;
+</script><script>window.FILM_NAME = '08 Radio'; window.POSTER_T = 4.6;</script>
+<script src="player.js"></script>
+</body></html>
