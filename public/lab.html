@@ -266,7 +266,7 @@ const isSmall = Math.min(innerWidth, innerHeight) < 700;
 // LOW tier: phones, touch-first or few-core devices → lighter AO, no MSAA, smaller shadows. #hq forces full quality.
 const LOW = !location.hash.includes('hq') && (isSmall || matchMedia('(pointer:coarse)').matches || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4);
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-let DPR = Math.min(devicePixelRatio, LOW ? 1.5 : 2);
+let DPR = Math.min(devicePixelRatio, 1.5), HQ = false; // everyone boots on the light tier; fast machines are upgraded once the boot is over
 renderer.setPixelRatio(DPR); renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = .96;
@@ -294,8 +294,8 @@ const rt = new THREE.WebGLRenderTarget(innerWidth * DPR, innerHeight * DPR, { ty
 const composer = new EffectComposer(renderer, rt);
 composer.setPixelRatio(DPR); composer.setSize(innerWidth, innerHeight);
 const ao = new N8AOPass(scene, camera, innerWidth * DPR, innerHeight * DPR);
-ao.setQualityMode(LOW ? 'Medium' : 'Ultra');
-Object.assign(ao.configuration, { aoRadius: .34, distanceFalloff: .9, intensity: 3, gammaCorrection: false, screenSpaceRadius: false, halfRes: LOW, accumulate: false, denoiseRadius: 10, color: new THREE.Color(0x1a1712) });
+ao.setQualityMode('Medium');
+Object.assign(ao.configuration, { aoRadius: .34, distanceFalloff: .9, intensity: 3, gammaCorrection: false, screenSpaceRadius: false, halfRes: true, accumulate: false, denoiseRadius: 10, color: new THREE.Color(0x1a1712) });
 composer.addPass(ao);
 const bloom = new UnrealBloomPass(new V2(innerWidth, innerHeight), .28, .32, 1.5);
 composer.addPass(bloom);
@@ -307,6 +307,7 @@ if (PROF) setTimeout(() => { const gl = renderer.getContext(); composer.passes.f
 const PERF = { n: 0, sum: 0, done: location.hash.includes('hq'), frames: 0 };
 let MOTION = false; const QBASE = () => PERF.done && DPR <= 1.5 && ao.configuration._low ? 'Medium' : (LOW ? 'Medium' : 'Ultra');
 function setMotion(on) { MOTION = on; if (on) ao.needsFrame = true; } // big moves (devices turning over) render with light AO so they stay smooth
+function perfUpgrade() { HQ = true; DPR = Math.min(devicePixelRatio, 2); renderer.setPixelRatio(DPR); composer.setPixelRatio(DPR); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); ao.setQualityMode('Ultra'); ao.configuration.halfRes = false; ao.needsFrame = true; }
 function perfDowngrade() { ao.configuration._low = true; PERF.done = true; DPR = Math.min(devicePixelRatio, 1.5); renderer.setPixelRatio(DPR); composer.setPixelRatio(DPR); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); ao.setQualityMode('Medium'); ao.configuration.halfRes = true; sun.shadow.blurSamples = 10; ao.needsFrame = true; }
 const QF = location.hash; if (QF.includes('nobloom')) bloom.enabled = false; if (QF.includes('noao')) ao.enabled = false;
 
@@ -1890,8 +1891,8 @@ function loopBody() {
   for (let i = packets.length - 1; i >= 0; i--) { const P = packets[i], p = (t - P.t0) / P.dur; if (p < 0) continue; if (p > 1 || !routes[P.r.key]) { P.m.visible = false; packets.splice(i, 1); continue; } const d = easeInOut(p) * P.r.L, [x, z] = P.r.at(d), [x2, z2] = P.r.at(Math.min(P.r.L, d + .01)); P.m.position.set(x, .007, z); P.m.rotation.y = Math.atan2(-(z2 - z), x2 - x); }
   const busy = MOTION || morph || active || drag || EDIT || Math.abs(cam.d - cam.wd) > .002 || cam.t.distanceTo(cam.wt) > .002 || allKeys.some(k => k.press > 0) || allToggles.some(k => Math.abs(k.target - (k.cur ?? k.target)) > .001) || Object.values(modules).some(m => m.anim) || panels.some(p => p.anim);
   if (busy || S.now - lastBusy < .05) { ao.needsFrame = true; PERF.busyN = (PERF.busyN || 0) + 1; PERF.why = [morph && 'morph', active && 'active', drag && 'drag', EDIT && 'edit', Math.abs(cam.d - cam.wd) > .002 && 'camd', cam.t.distanceTo(cam.wt) > .002 && 'camt', allKeys.some(k => k.press > 0) && 'keys', allToggles.some(k => Math.abs(k.target - (k.cur ?? k.target)) > .001) && 'tog', Object.values(modules).some(m => m.anim) && 'manim', panels.some(p => p.anim) && 'panim'].filter(Boolean).join(','); } if (busy) lastBusy = S.now;
-  if (!PERF.done && t > 3 && !MOTION) { PERF.n++; if (dt > 1 / 28) PERF.slow = (PERF.slow || 0) + 1; if (PERF.n >= 90) { if (PERF.slow > 54) perfDowngrade(); else PERF.done = true; } }
-  PERF.frames++; if (!busy && LOW && PERF.frames > 6 && PERF.frames % 2) return; // idle on low tier: ~30 fps is plenty for the screens
+  if (!PERF.done && BOOT_T && t > BOOT_T + 6 && !MOTION) { PERF.n++; if (dt < 1 / 45) PERF.fast = (PERF.fast || 0) + 1; if (PERF.n >= 90) { PERF.done = true; if (PERF.fast > 72 && !LOW) perfUpgrade(); } }
+  PERF.frames++; if (!busy && !HQ && PERF.done && PERF.frames % 2) return; // idle on low tier: ~30 fps is plenty for the screens
   if (PROF) { PROF.mid += performance.now() - PROF.t1; const r0 = performance.now(); composer.render(); PROF.render += performance.now() - r0; PROF.rn++; } else composer.render();
   if (PERF.frames === 4) document.getElementById('boot').classList.add('done');
 }
