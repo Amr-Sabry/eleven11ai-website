@@ -303,7 +303,7 @@ const smaa = new SMAAPass(innerWidth * DPR, innerHeight * DPR); composer.addPass
 // adaptive: if the first ~2s run slow, drop to pixel ratio 1 + low AO once
 const PERF = { n: 0, sum: 0, done: location.hash.includes('hq'), frames: 0 };
 let MOTION = false; const QBASE = () => PERF.done && DPR <= 1.5 && ao.configuration._low ? 'Medium' : (LOW ? 'Medium' : 'Ultra');
-function setMotion(on) { if (MOTION === on) return; MOTION = on; ao.setQualityMode(on ? 'Low' : (ao.configuration._low ? 'Medium' : (LOW ? 'Medium' : 'Ultra'))); ao.configuration.halfRes = on || LOW || !!ao.configuration._low; ao.needsFrame = true; } // big moves (devices turning over) render with light AO so they stay smooth
+function setMotion(on) { MOTION = on; if (on) ao.needsFrame = true; } // big moves (devices turning over) render with light AO so they stay smooth
 function perfDowngrade() { ao.configuration._low = true; PERF.done = true; DPR = Math.min(devicePixelRatio, 1.5); renderer.setPixelRatio(DPR); composer.setPixelRatio(DPR); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); ao.setQualityMode('Medium'); ao.configuration.halfRes = true; sun.shadow.blurSamples = 10; ao.needsFrame = true; }
 const QF = location.hash; if (QF.includes('nobloom')) bloom.enabled = false; if (QF.includes('noao')) ao.enabled = false;
 
@@ -1384,9 +1384,9 @@ function drawF5(c, str, cx, cy, p, col) { const gw = 5 * p, gap = p, tw = str.le
   const today = (spin = 0) => { const n = new Date(); DR.forEach((d, i) => { let k = d.now(n); if (i === 3) k = n.getDay() + (d.idx >= 7 ? 7 : 0); if (i === 1 && d.idx >= 4) k += 4; const want = -k * d.step; let tgt = want - spin * Math.PI * 2 * (i % 2 ? -1 : 1); d.target = tgt; }); };
   reg(knob, { type: 'key', press: 0, start() { this.press = 1; today(1); beep(700, .03); log('DATE: TODAY'); }, move() { }, tick(dt) { this.press = Math.max(0, this.press - dt * 4); knob.rotation.x += this.press * dt * 20; } });
   DR.forEach(d => { d.ang = d.target = -Math.floor(Math.random() * d.vals.length) * d.step; });
-  let lastKey = '';
+  let lastKey = ''; m.onWake = () => { rolled = true; drumIdle = -99; DR.forEach(d => { d.hold = false; }); today(1); }; // turned back to its face: wind to today again
   TICKERS.push((dt, t) => {
-    if (!rolled && t > 1.6) { rolled = true; today(1); } // first show: the drums roll into today
+    if (!rolled && t > 1.6 && !m.flipK) { rolled = true; today(1); } // first show: the drums roll into today
     if (rolled && !DR.some(d => d.hold) && t - drumIdle > 6 && drumIdle > 0) { drumIdle = -99; today(0); log('DATE: BACK TO TODAY'); }
     const key = new Date().toDateString(); if (rolled && key !== lastKey) { if (lastKey) today(0); lastKey = key; }
     DR.forEach(d => { const prev = Math.round(d.ang / d.step); d.ang += (d.target - d.ang) * Math.min(1, dt * (d.hold ? 30 : 7)); d.g.rotation.x = d.ang; const now = Math.round(d.ang / d.step); if (now !== prev) beep(2600 + Math.random() * 300, .006, 'square', .018); d.idx = ((-now % d.vals.length) + d.vals.length) % d.vals.length; });
@@ -1637,7 +1637,7 @@ function applyLayout(next, first = false) {
   Object.values(routes).forEach(r => r.vis = 0);
   if (first) {
     buildChassis(F.FW, F.FD); buildPanels(L);
-    ORDER.forEach((id, i) => { if (!L.pos[id]) return; const [c, r] = L.pos[id], cr = cellRect(L, c, r, ...SIZES[id]); place(modules[id], cr.cx, cr.cz, .35 + i * .14, true); });
+    ORDER.forEach((id, i) => { if (!L.pos[id]) return; const [c, r] = L.pos[id], cr = cellRect(L, c, r, ...SIZES[id]); const m = modules[id]; m.group.position.set(cr.cx, m.th, cr.cz); m.group.visible = true; m.flipped = true; m.flipK = 1; m.group.rotation[m.flipAx] = Math.PI; m.wakeAt = 1.2 + BOOT_SEQ.indexOf(id) * .45; m.slowFlip = true; if (m.ring) m.ring.position.set(cr.cx, .004, cr.cz); });
     setTimeout(() => buildRoutes(L), 1700);
   } else {
     const f0 = lastF || dims(prevL); morph = { t0: S.now + (changed ? .25 : 0), dur: changed ? .55 : .3, a: [f0.FW, f0.FD], b: [F.FW, F.FD], done: false };
@@ -1862,7 +1862,7 @@ Object.values(modules).forEach(m => {
   { const keep = new Set([tab, dot, bk, slab, m.backNum, m.backName]), bx = new THREE.Box3(); m.group.updateMatrixWorld(true); m.pokers = m.inner.children.filter(o => { if (keep.has(o)) return false; bx.setFromObject(o); return isFinite(bx.min.y) && bx.min.y - m.group.position.y < -.006; }); (m.extraPokers || []).forEach(o => { if (!m.pokers.includes(o)) m.pokers.push(o); }); } // parts deeper than the shell (drums, wheels, trays) must not poke through the back
 });
 let BOOTED = false; setTimeout(() => BOOTED = true, 0);
-TICKERS.push(dt => { setMotion(Object.values(modules).some(m => m.wakeAt || (m.flipK > 0 && m.flipK < 1))); for (const m of Object.values(modules)) { if (m.wakeAt && S.now > m.wakeAt) { m.wakeAt = 0; m.flipped = false; m.wakeFlash = true; } if (m.wakeFlash && m.flipK === 0) { m.wakeFlash = false; m.ringFlash = 1; beep(90, .05, 'square', .05); } const tg = m.flipped ? 1 : 0, hid = m.flipK > .5; if (m.pokeHid !== hid) { m.pokeHid = hid; m.pokers.forEach(o => o.visible = !hid); } if (m.flipK === tg || m.anim) continue; m.flipK = clamp(m.flipK + Math.sign(tg - m.flipK) * Math.min(dt, .05) / (m.slowFlip ? 1.35 : .7)); if (m.flipK === tg) m.slowFlip = false; const e = easeInOut(m.flipK); m.group.rotation[m.flipAx] = Math.PI * e; m.group.position.y = Math.sin(m.flipK * Math.PI) * .4 + m.th * e; ao.needsFrame = true; } });
+TICKERS.push(dt => { setMotion(Object.values(modules).some(m => m.wakeAt || (m.flipK > 0 && m.flipK < 1))); for (const m of Object.values(modules)) { if (m.wakeAt && S.now > m.wakeAt) { m.wakeAt = 0; m.flipped = false; m.wakeFlash = true; } if (m.wasBack && m.flipK === 0) { m.wasBack = false; m.onWake?.(); } if (m.flipK === 1) m.wasBack = true; if (m.wakeFlash && m.flipK === 0) { m.wakeFlash = false; m.ringFlash = 1; beep(90, .05, 'square', .05); } const tg = m.flipped ? 1 : 0, hid = m.flipK > .5; if (m.pokeHid !== hid) { m.pokeHid = hid; m.pokers.forEach(o => o.visible = !hid); } if (m.flipK === tg || m.anim) continue; m.flipK = clamp(m.flipK + Math.sign(tg - m.flipK) * Math.min(dt, .05) / (m.slowFlip ? 1.35 : .7)); if (m.flipK === tg) m.slowFlip = false; const e = easeInOut(m.flipK); m.group.rotation[m.flipAx] = Math.PI * e; m.group.position.y = Math.sin(m.flipK * Math.PI) * .4 + m.th * e; ao.needsFrame = true; } });
 
 loadLayout(); applyLayout(chooseLayout(), true); setTheme('black'); updateTray();
 showCard(null); let cardHover = false; card.onpointerenter = () => cardHover = true; card.onpointerleave = () => cardHover = false;
@@ -1882,9 +1882,9 @@ function loopBody() {
   acc += dt; if (acc > 1 / 24) { acc = 0; for (const m of Object.values(modules)) m.draw(t); UI.draw?.(t); }
   for (const r of Object.values(routes)) { if (r.drawT0 !== undefined) { const p = clamp((t - r.drawT0) / .7); r.setProg(easeOut(p)); if (p >= 1) r.drawT0 = undefined; } r.vis = Math.min(1, r.vis + dt * 3); r.tick(dt); }
   for (let i = packets.length - 1; i >= 0; i--) { const P = packets[i], p = (t - P.t0) / P.dur; if (p < 0) continue; if (p > 1 || !routes[P.r.key]) { P.m.visible = false; packets.splice(i, 1); continue; } const d = easeInOut(p) * P.r.L, [x, z] = P.r.at(d), [x2, z2] = P.r.at(Math.min(P.r.L, d + .01)); P.m.position.set(x, .007, z); P.m.rotation.y = Math.atan2(-(z2 - z), x2 - x); }
-  const busy = morph || active || drag || EDIT || Math.abs(cam.d - cam.wd) > .002 || cam.t.distanceTo(cam.wt) > .002 || allKeys.some(k => k.press > 0) || allToggles.some(k => Math.abs(k.target - (k.cur ?? k.target)) > .001) || Object.values(modules).some(m => m.anim) || panels.some(p => p.anim);
+  const busy = MOTION || morph || active || drag || EDIT || Math.abs(cam.d - cam.wd) > .002 || cam.t.distanceTo(cam.wt) > .002 || allKeys.some(k => k.press > 0) || allToggles.some(k => Math.abs(k.target - (k.cur ?? k.target)) > .001) || Object.values(modules).some(m => m.anim) || panels.some(p => p.anim);
   if (busy || S.now - lastBusy < .05) { ao.needsFrame = true; PERF.busyN = (PERF.busyN || 0) + 1; PERF.why = [morph && 'morph', active && 'active', drag && 'drag', EDIT && 'edit', Math.abs(cam.d - cam.wd) > .002 && 'camd', cam.t.distanceTo(cam.wt) > .002 && 'camt', allKeys.some(k => k.press > 0) && 'keys', allToggles.some(k => Math.abs(k.target - (k.cur ?? k.target)) > .001) && 'tog', Object.values(modules).some(m => m.anim) && 'manim', panels.some(p => p.anim) && 'panim'].filter(Boolean).join(','); } if (busy) lastBusy = S.now;
-  if (!PERF.done && t > 1.5 && !Object.values(modules).some(m => m.wakeAt || (m.flipK > 0 && m.flipK < 1))) { PERF.n++; PERF.sum += dt; if (PERF.n >= 60) { if (PERF.sum / PERF.n > 1 / 28) perfDowngrade(); else PERF.done = true; } }
+  if (!PERF.done && t > 3 && !MOTION) { PERF.n++; if (dt > 1 / 28) PERF.slow = (PERF.slow || 0) + 1; if (PERF.n >= 90) { if (PERF.slow > 54) perfDowngrade(); else PERF.done = true; } }
   PERF.frames++; if (!busy && LOW && PERF.frames > 6 && PERF.frames % 2) return; // idle on low tier: ~30 fps is plenty for the screens
   composer.render();
   if (PERF.frames === 4) document.getElementById('boot').classList.add('done');
