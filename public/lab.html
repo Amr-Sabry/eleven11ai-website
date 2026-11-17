@@ -839,7 +839,7 @@ const glowAll = () => ORDER.forEach((id, i) => setTimeout(() => glow(id), i * 11
 const INFO = {
   hero: { ar: 'الماستر', d: 'وحدة الماستر بتاعة الميكسر: فيدر للصوت وإكولايزر 5 باندات بيتحكموا في صوت كل الأدوات، والشاشة فيها analyser بيتحرك مع أي صوت طالع. MUTE بيكتم، وزرار 11 بينوّر الجهاز كله.', i: 'ALL SOUND', o: 'SPEAKERS' },
   cd: { ar: 'مشغّل الأسطوانات', d: 'أربع تراكات 8-bit بتتعزف جوه الجهاز نفسه. PLAY يشغّل ويوقف، والأسهم بتغيّر التراك، وتقدر تمسك الأسطوانة وتلفها بإيدك.', i: 'PLAY', o: 'MASTER' },
-  radio: { ar: 'الراديو', d: 'إذاعات حقيقية لايف من الإنترنت. دوس ON AIR، واختار المدينة (DXB / CAI / RUH / WRLD)، ولف TUNE أو دوس SEEK عشان تتنقل بين المحطات.', i: 'INTERNET', o: 'MASTER' },
+  radio: { ar: 'الراديو', d: 'إذاعات حقيقية لايف من الإنترنت. دوس ON AIR، واختار المدينة (DXB / CAI / RUH / WRLD)، ولف TUNE عشان تتنقل بين المحطات. زرار LIST بيطلّع درج من تحت الجهاز فيه 12 زرار للمحطات، دوس على أي واحد يشتغل.', i: 'INTERNET', o: 'MASTER' },
   pixel: { ar: 'حوّل صورتك 8-BIT', d: 'دوس PHOTO أو اسحب صورتك على الصفحة، وهتتحول لبكسل آرت بـ 4 درجات. CONTRAST للتباين، وDITHER لنوع التنقيط، والفيدر للدقة، وSAVE تنزّلها.', i: 'YOUR PHOTO', o: 'PNG 8-BIT' },
   stack: { ar: 'لعبة البلوكات', d: 'لعبة البلوكات: الأسهم تتحرك وتلف، والمسطرة (Space) تنزّل البلوك على طول، وP توقف. وعلى الموبايل استخدم الزراير. نوبة LEVEL بتحدد سرعة البداية.', i: 'KEYS · BUTTONS', o: 'HI SCORE' },
   status: { ar: 'حالة الموقع', d: 'الموقع تحت الإنشاء. زرار PING بيبعت إشارة بتنوّر كل الموديولز.', i: '—', o: 'ALL MODULES' },
@@ -1012,7 +1012,7 @@ function buildVCR(m) {
 }
 
 buildVCR(modules.pixel);
-TICKERS.push(() => { const M = modules; M.cd && (M.cd.active = CD.playing); M.radio && (M.radio.active = RADIO.on); M.stack.active = GM.state === 'play'; M.pixel.active = POL.state !== 'hidden'; M.piano.active = (M.piano.keys || []).some(k => k.down); M.hero.active = MASTER.lvl > .04 && !muted; });
+TICKERS.push(() => { const M = modules; M.cd && (M.cd.active = CD.playing); M.radio && (M.radio.active = RADIO.on || !!M.radio.drawerUp); M.stack.active = GM.state === 'play'; M.pixel.active = POL.state !== 'hidden'; M.piano.active = (M.piano.keys || []).some(k => k.down); M.hero.active = MASTER.lvl > .04 && !muted; });
 
 /* ---------- FROSTED PROOF: PIXEL ME internals, seen through sandblasted plastic ---------- */
 function pcbTex() {
@@ -1161,24 +1161,71 @@ function startStream() {
   el.src = st.u; el.play().catch(plain);
 }
 { const m = new Module('radio', { num: '08', name: 'RADIO' });
-  m.scr = m.screen({ x: -.46, z: -.17, cols: 46, rows: 15, mode: 'led', s: 12 });
+  // face: speaker · backlit tuning dial with a real needle · one-line station strip · band keys
+  const DX = .2, DZ = -.285, DW = .9, DD = .16;
+  m.scr = m.screen({ x: DX, z: -.01, cols: 40, rows: 7, mode: 'led', s: 12 });
+  const PRESETS = 12, DRW = { open: false, k: 0 };
+  const turnOn = () => { ensureAC(); cdStop(); RADIO.on = true; DRW.open = true; const b = RADIO.band; loadBand(b).then(L => { if (!RADIO.on || RADIO.band !== b) return; if (L) { RADIO.pendT = S.now + .05; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else log('RADIO: NO SIGNAL · CHECK CONNECTION'); }); };
   const setIdx = (i, fromKnob) => { const L = RADIO.lists[RADIO.band]; if (!L) return; i = (i + L.length) % L.length; if (i === RADIO.idx && fromKnob) return; RADIO.idx = i; if (!fromKnob) m.tune.set(L.length > 1 ? i / (L.length - 1) : 0, true); beep(1800 + Math.random() * 600, .012, 'square', .02); if (RADIO.on) { stopStream(); RADIO.status = 'TUNING'; RADIO.tuneT = S.now; RADIO.pendT = S.now + .45; } };
-  const bandKeys = m.radio({ x: -.47, z: .31, items: BANDS.map(b => b[0]), w: .19, d: .13, gap: .085, dir: 'row', value: 0, tone: 'dark', onChange: b => { RADIO.band = b; RADIO.idx = 0; m.tune.set(0, true); stopStream(); loadBand(b).then(L => { if (L && RADIO.on && RADIO.band === b) { RADIO.pendT = S.now + .1; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else if (L && !RADIO.on) RADIO.status = 'OFF'; }); } });
-  m.tune = m.knob({ x: .52, z: -.1, r: .15, value: 0, label: 'TUNE', onChange: v => { const L = RADIO.lists[RADIO.band]; if (L) setIdx(Math.round(v * (L.length - 1)), true); } });
-  m.key({ x: .88, z: -.19, w: .16, d: .14, glyph: 'U', tone: 'dark', onPress: () => setIdx(RADIO.idx + 1) }); m.key({ x: .88, z: .0, w: .16, d: .14, glyph: 'D', tone: 'dark', onPress: () => setIdx(RADIO.idx - 1) });
-  m.label('SEEK', .88, .13, { align: 'center', size: .0095 });
-  m.onKey = m.pill({ x: .7, z: .33, len: .16, r: .045, accent: true, lamp: true, onPress: () => { if (RADIO.on) { radioOff(); log('RADIO: OFF'); return; } ensureAC(); cdStop(); RADIO.on = true; const b = RADIO.band; loadBand(b).then(L => { if (!RADIO.on || RADIO.band !== b) return; if (L) { RADIO.pendT = S.now + .05; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else log('RADIO: NO SIGNAL · CHECK CONNECTION'); }); } });
-  m.label('ON AIR', .36, .33, { align: 'center', size: .0095 });
-  m.led_ = m.led({ x: .96, z: -.42 });
-  TICKERS.push((dt, t) => { if (RADIO.on && RADIO.pendT && t > RADIO.pendT) { RADIO.pendT = 0; startStream(); } if (RADIO.status === 'TUNING' && !RADIO.pendT && t - RADIO.tuneT > 12) RADIO.status = 'NO SIGNAL'; m.led_.set(RADIO.status === 'LIVE' || (RADIO.on && Math.floor(t * 4) % 2 === 0)); m.onKey.on = RADIO.on; });
-  m.draw = t => { const s = m.scr, L = RADIO.lists[RADIO.band], n = L ? L.length : 0; s.clear(0);
-    s.text(BANDS[RADIO.band][0], 1, 1, 3); const st = RADIO.status; s.text(st === 'LIVE' ? 'LIVE' : st === 'OFF' ? 'OFF' : st === 'NO SIGNAL' ? 'NO SIG' : (Math.floor(t * 3) % 2 ? 'TUNE' : ''), 19, 1, st === 'LIVE' ? 1 : 2);
-    const cnt = n ? String(RADIO.idx + 1).padStart(2, '0') + '/' + n : '--'; s.text(cnt, 45 - s.tw(cnt), 1, 2);
-    for (let x = 1; x < 45; x += 2) s.px(x, 8, (x - 1) % 8 === 0 ? 2 : 6); const nx = 1 + Math.round((n > 1 ? RADIO.idx / (n - 1) : 0) * 43); s.rect(nx, 7, 1, 3, 3);
-    let name = st === 'OFF' ? 'PRESS ON' : st === 'NO SIGNAL' && !L ? 'NO SIGNAL' : L ? L[RADIO.idx].n : 'LOADING'; const tw = s.tw(name); let x = 1; if (tw > 44) x = 1 - (Math.floor(t * 12) % (tw + 14)); s.text(name, x, 10, st === 'LIVE' ? 1 : 2); if (tw > 44) s.text(name, x + tw + 14, 10, st === 'LIVE' ? 1 : 2);
-    if (st === 'TUNING' || st === 'LOADING') for (let i = 0; i < 46; i++) if (hash(i * 3.3 + Math.floor(t * 24)) > .8) s.px(i, 10 + ((hash(i + t) * 5) | 0), 6);
-    s.render(); };
-  m.build(); }
+  m.radio({ x: .1, z: .33, items: BANDS.map(b => b[0]), w: .17, d: .12, gap: .07, dir: 'row', value: 0, tone: 'dark', onChange: b => { RADIO.band = b; RADIO.idx = 0; m.tune.set(0, true); stopStream(); loadBand(b).then(L => { if (L && RADIO.on && RADIO.band === b) { RADIO.pendT = S.now + .1; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else if (L && !RADIO.on) RADIO.status = 'OFF'; }); } });
+  m.tune = m.knob({ x: .84, z: -.27, r: .115, value: 0, label: 'TUNE', onChange: v => { const L = RADIO.lists[RADIO.band]; if (L) setIdx(Math.round(v * (L.length - 1)), true); } });
+  m.listKey = m.key({ x: .84, z: .1, w: .22, d: .1, label: 'LIST', tone: 'dark', lamp: true, onPress: () => { DRW.open = !DRW.open; if (DRW.open) loadBand(RADIO.band).then(() => { if (!RADIO.on) RADIO.status = 'OFF'; }); beep(DRW.open ? 620 : 420, .03); log(DRW.open ? 'RADIO: PRESETS OPEN' : 'RADIO: PRESETS CLOSED'); } });
+  m.onKey = m.pill({ x: .84, z: .35, len: .16, r: .045, accent: true, lamp: true, onPress: () => { if (RADIO.on) { radioOff(); DRW.open = false; log('RADIO: OFF'); return; } turnOn(); } });
+  m.label('ON AIR', .84, .235, { align: 'center', size: .0095 });
+  m.label('08 RADIO', -.93, .4);
+  m.led_ = m.led({ x: .96, z: -.44 });
+  m.build();
+  m.ribs({ x: -.64, z: -.1, w: .52, n: 13, step: .04 }); // slatted speaker
+  { const fr = new THREE.Mesh(new RoundedBoxGeometry(.6, .012, .6, 3, .005), MAT.capD); fr.position.set(-.64, m.th + .001, -.1); fr.receiveShadow = true; m.inner.add(fr); }
+  // --- tuning dial: warm backlit glass, printed scale, a needle that travels
+  const dcv = document.createElement('canvas'); dcv.width = 1080; dcv.height = 204; const dtx = new THREE.CanvasTexture(dcv); dtx.colorSpace = THREE.SRGBColorSpace; dtx.anisotropy = 16;
+  const dmat = new THREE.MeshBasicMaterial({ map: dtx }); dmat.color.setScalar(.6);
+  const top = m.deck + TH, dial = new THREE.Mesh(new THREE.PlaneGeometry(DW, DD), dmat); dial.rotation.x = -Math.PI / 2; dial.position.set(DX, m.th + .006, DZ); dial.userData.cannotReceiveAO = true; m.inner.add(dial);
+  const dback = new THREE.Mesh(new THREE.PlaneGeometry(DW + .06, DD + .06), MAT.dark); dback.rotation.x = -Math.PI / 2; dback.position.set(DX, m.th + .003, DZ); m.inner.add(dback);
+  const nmat = new THREE.MeshBasicMaterial({ color: 0x7c2e12 }), needle = new THREE.Mesh(new THREE.BoxGeometry(.008, .006, DD - .02), nmat); needle.position.set(DX, m.th + .014, DZ); needle.userData.cannotReceiveAO = true; m.inner.add(needle);
+  const dgl = new THREE.Mesh(new THREE.PlaneGeometry(DW, DD), MAT.glass); dgl.rotation.x = -Math.PI / 2; dgl.position.set(DX, m.th + .024, DZ); dgl.userData.noAO = true; m.inner.add(dgl);
+  { const bw = .03, ow = DW + .05 + bw * 2, od = DD + .05 + bw * 2, bar = (bx, bz, sx, sz) => { const b = new THREE.Mesh(new RoundedBoxGeometry(sx, .034, sz, 2, .009), MAT.capD); b.position.set(DX + bx, m.th + .012, DZ + bz); b.castShadow = true; m.inner.add(b); }; bar(0, -od / 2 + bw / 2, ow, bw); bar(0, od / 2 - bw / 2, ow, bw); bar(-ow / 2 + bw / 2, 0, bw, od); bar(ow / 2 - bw / 2, 0, bw, od); }
+  let dialKey = '';
+  const drawDial = () => { const L = RADIO.lists[RADIO.band], n = L ? L.length : 0, key = RADIO.band + '|' + n; if (key === dialKey) return; dialKey = key; const c = dcv.getContext('2d'), W = dcv.width, H = dcv.height;
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#F3E3B4'); g.addColorStop(1, '#D9B56A'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#2a2014'; const x0 = 50, x1 = W - 50; c.fillRect(x0, 96, x1 - x0, 3);
+    for (let i = 0; i <= 100; i++) { const x = x0 + (x1 - x0) * i / 100, h = i % 10 === 0 ? 34 : i % 5 === 0 ? 22 : 12; c.fillRect(x - 1, 96 - h, i % 10 === 0 ? 3 : 2, h); }
+    for (let i = 0; i <= 10; i++) drawType(c, String(88 + i * 2), x0 + (x1 - x0) * i / 10, 32, 26, '#2a2014');
+    for (let i = 0; i < n; i++) { const x = x0 + (x1 - x0) * (n > 1 ? i / (n - 1) : 0); c.fillStyle = i < PRESETS ? '#B5421A' : '#6b5a3a'; c.fillRect(x - 2, 112, 4, i < PRESETS ? 30 : 18); }
+    drawType(c, 'FM · ' + BANDS[RADIO.band][0] + (n ? ' · ' + n + ' STATIONS' : ''), x0, 176, 24, '#5a4520', 'left'); drawType(c, 'MHZ', x1, 176, 24, '#5a4520', 'right'); dtx.needsUpdate = true; };
+  drawDial();
+  // --- presets drawer: slides out from under the device; a bank of real keys, each with its own scribble strip
+  const DW2 = 1.84, DD2 = .82, dr = new THREE.Group(); dr.position.set(0, -.04, 0); dr.visible = false; m.inner.add(dr);
+  const tray = new THREE.Mesh(planarUV(new RoundedBoxGeometry(DW2, .05, DD2, 4, .02), 0, 0), MAT.shell); tray.castShadow = tray.receiveShadow = true; dr.add(tray);
+  const bed2 = new THREE.Mesh(new THREE.PlaneGeometry(DW2 - .08, DD2 - .2), MAT.dark); bed2.rotation.x = -Math.PI / 2; bed2.position.set(0, .0262, .02); dr.add(bed2);
+  for (let i = 0; i < 7; i++) { const r = new THREE.Mesh(new RoundedBoxGeometry(.5, .014, .012, 2, .004), MAT.capD); r.position.set(0, .03, DD2 / 2 - .085 + (i - 3) * .0001 + (i % 2 ? .018 : 0) * 0 + (i - 3) * .014); dr.add(r); } // pull grip
+  const strips = [], pkeys = [], cellW = (DW2 - .1) / 6;
+  for (let i = 0; i < PRESETS; i++) { const col = i % 6, row = (i / 6) | 0, cx = -DW2 / 2 + .05 + cellW * (col + .5), cz = -DD2 / 2 + .17 + row * .265;
+    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 96; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8; const sm = new THREE.MeshBasicMaterial({ map: tx });
+    const st = new THREE.Mesh(new THREE.PlaneGeometry(cellW - .03, .08), sm); st.rotation.x = -Math.PI / 2; st.position.set(cx, .0275, cz); st.userData.cannotReceiveAO = true; dr.add(st); strips.push({ cv, tx, sm });
+    const lm = m._lamp(), cap = new THREE.Mesh(planarUV(new RoundedBoxGeometry(cellW - .05, .05, .11, 4, .016), cx * 3, cz * 3), lm); cap.position.set(cx, .04, cz + .115); cap.castShadow = true; dr.add(cap);
+    const k = { type: 'key', press: 0, on: false, start() { this.press = 1; const L = RADIO.lists[RADIO.band]; if (!L || i >= L.length) { beep(200, .04); return; } setIdx(i); if (!RADIO.on) turnOn(); beep(700 + i * 40, .03); }, move() { }, tick(dt) { this.press = Math.max(0, this.press - dt * 5); cap.position.y = .04 - .014 * Math.min(1, this.press * 1.6) - (this.on ? .006 : 0); lm.emissiveIntensity += ((this.on ? 1.7 : 0) - lm.emissiveIntensity) * Math.min(1, dt * 10); } };
+    reg(cap, k); reg(st, k); k.owner = m; allKeys.push(k); pkeys.push(k); }
+  reg(tray, { type: 'key', press: 0, start() { }, move() { }, tick() { } });
+  let stripKey = '';
+  const drawStrips = () => { const L = RADIO.lists[RADIO.band], key = RADIO.band + '|' + (L ? L.length : 0) + '|' + RADIO.idx + '|' + RADIO.on; if (key === stripKey) return; stripKey = key;
+    strips.forEach((s, i) => { const c = s.cv.getContext('2d'), sel = L && i === RADIO.idx, name = L && L[i] ? L[i].n : '—'; c.fillStyle = sel ? '#FF6A2A' : '#101012'; c.fillRect(0, 0, 320, 96); c.fillStyle = sel ? '#1a1a1a' : '#55534e'; c.fillRect(0, 0, 320, 4);
+      drawType(c, String(i + 1).padStart(2, '0'), 14, 26, 24, sel ? '#1a1a1a' : '#FF6A2A', 'left'); const words = name.split(' '), l1 = [], l2 = []; words.forEach(w => ((l1.join(' ') + ' ' + w).trim().length <= 13 && !l2.length ? l1 : l2).push(w));
+      drawType(c, l1.join(' ').slice(0, 13), 60, 26, 25, sel ? '#1a1a1a' : '#EDEAE2', 'left'); drawType(c, l2.join(' ').slice(0, 17), 14, 68, 25, sel ? '#1a1a1a' : '#a9a69e', 'left'); s.tx.needsUpdate = true; pkeys[i].on = !!sel && RADIO.on; }); };
+  drawStrips();
+  m.liftH = .34;
+  TICKERS.push((dt, t) => { if (RADIO.on && RADIO.pendT && t > RADIO.pendT) { RADIO.pendT = 0; startStream(); } if (RADIO.status === 'TUNING' && !RADIO.pendT && t - RADIO.tuneT > 12) RADIO.status = 'NO SIGNAL';
+    m.led_.set(RADIO.status === 'LIVE' || (RADIO.on && Math.floor(t * 4) % 2 === 0)); m.onKey.on = RADIO.on; m.listKey.on = DRW.open;
+    if (m.flipped || EDIT) DRW.open = false; m.drawerUp = DRW.open || DRW.k > 0; const tg = DRW.open ? 1 : 0;
+    if (DRW.k !== tg && (tg === 0 || (m.lift || 0) > m.liftH * .85)) { DRW.k = clamp(DRW.k + Math.sign(tg - DRW.k) * dt / .45); ao.needsFrame = true; }
+    dr.visible = DRW.k > 0 && m.flipK < .5; dr.position.z = easeInOut(DRW.k) * (m.D / 2 + DD2 / 2 - .09);
+    const L = RADIO.lists[RADIO.band], n = L ? L.length : 0, fx = DX - DW / 2 + .042 + (n > 1 ? RADIO.idx / (n - 1) : 0) * (DW - .084); needle.position.x += (fx - needle.position.x) * Math.min(1, dt * 9);
+    const lit = RADIO.on ? (RADIO.status === 'LIVE' ? 1.5 : 1.05 + .25 * Math.sin(t * 9)) : .6; dmat.color.setScalar(dmat.color.r + (lit - dmat.color.r) * Math.min(1, dt * 6)); nmat.color.setRGB(RADIO.on ? 5 : .5, RADIO.on ? 1.1 : .18, RADIO.on ? .3 : .07); });
+  m.draw = t => { drawDial(); drawStrips(); const s = m.scr, L = RADIO.lists[RADIO.band], st = RADIO.status; s.clear(0);
+    const name = st === 'OFF' ? 'RADIO OFF' : st === 'NO SIGNAL' ? 'NO SIGNAL' : st === 'LOADING' || !L ? 'LOADING' : (st === 'TUNING' && Math.floor(t * 3) % 2 ? '' : L[RADIO.idx].n), tw = s.tw(name); let x = Math.max(1, Math.round((40 - tw) / 2)); if (tw > 38) x = 1 - (Math.floor(t * 12) % (tw + 12));
+    s.text(name, x, 1, st === 'LIVE' ? 1 : 2); if (tw > 38) s.text(name, x + tw + 12, 1, st === 'LIVE' ? 1 : 2);
+    if (st === 'TUNING' || st === 'LOADING') for (let i = 0; i < 40; i++) if (hash(i * 3.3 + Math.floor(t * 24)) > .82) s.px(i, (hash(i + t) * 7) | 0, 6);
+    s.render(); }; }
 
 /* ---------- 02 STACK 2x3 — L2: falling blocks ---------- */
 const SHAPES = { I: [[0, 1], [1, 1], [2, 1], [3, 1]], O: [[1, 0], [2, 0], [1, 1], [2, 1]], T: [[1, 0], [0, 1], [1, 1], [2, 1]], S: [[1, 0], [2, 0], [0, 1], [1, 1]], Z: [[0, 0], [1, 0], [1, 1], [2, 1]], J: [[0, 0], [0, 1], [1, 1], [2, 1]], L: [[2, 0], [0, 1], [1, 1], [2, 1]] };
@@ -1881,7 +1928,7 @@ function loopBody() {
   clock.getDelta(); S.now = clock.elapsedTime; const t = S.now, dt = Math.min(.1, t - lastT); lastT = t;
   morphTick();
   Object.values(modules).forEach(animTick); panels.forEach(animTick);
-  for (const m of Object.values(modules)) if (m.ring) { if (drag && drag.m === m) continue; if (!m.group.visible) { m.ring.material.opacity = 0; continue; } m.ringFlash = Math.max(0, m.ringFlash - dt * 1.3); const hold = m.ringHold ? .55 : EDIT ? .25 : 0, live = m.active ? .62 + .08 * Math.sin(t * 3) : 0; m.lift = (m.lift || 0) + ((m.active && !EDIT ? .1 : 0) - (m.lift || 0)) * Math.min(1, dt * 6); if (!m.anim && !m.flipK) m.group.position.y = m.lift; m.ring.material.opacity = Math.max(hold, live, m.ringFlash * .55); if (!m.anim) m.ring.position.set(m.group.position.x, .004, m.group.position.z); }
+  for (const m of Object.values(modules)) if (m.ring) { if (drag && drag.m === m) continue; if (!m.group.visible) { m.ring.material.opacity = 0; continue; } m.ringFlash = Math.max(0, m.ringFlash - dt * 1.3); const hold = m.ringHold ? .55 : EDIT ? .25 : 0, live = m.active ? .62 + .08 * Math.sin(t * 3) : 0; m.lift = (m.lift || 0) + ((m.active && !EDIT ? (m.drawerUp ? m.liftH : .1) : 0) - (m.lift || 0)) * Math.min(1, dt * 6); if (!m.anim && !m.flipK) m.group.position.y = m.lift; m.ring.material.opacity = Math.max(hold, live, m.ringFlash * .55); if (!m.anim) m.ring.position.set(m.group.position.x, .004, m.group.position.z); }
   stackTick(dt); if (EDIT) Object.values(modules).forEach((m, i) => { if (!m.anim && (!drag || drag.m !== m) && m.group.visible) m.inner.rotation.z = Math.sin(t * 11 + i * 1.7) * .004; });
   const PF = PROF, _a = PF ? performance.now() : 0;
   camTick(dt); TICKERS.forEach(f => f(dt, t));
