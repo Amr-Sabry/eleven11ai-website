@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Eleven11 — carved logo</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}#out{display:block}#gl{position:absolute;left:-99999px;top:0}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}</script>
+</head><body>
+<canvas id="out"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { Font } from 'three/addons/loaders/FontLoader.js';
+import { TTFLoader } from 'three/addons/loaders/TTFLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+const Q = new URLSearchParams(location.search), FPS = 30; let FW = +(Q.get('w') || innerWidth), FH = +(Q.get('h') || innerHeight);
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1); renderer.setSize(FW, FH); renderer.domElement.id = 'gl'; document.body.appendChild(renderer.domElement);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const out = document.getElementById('out'); out.width = FW; out.height = FH; const octx = out.getContext('2d');
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0);
+const camera = new THREE.PerspectiveCamera(30, FW / FH, .05, 100);
+
+// black studio, long softboxes: the bevels of the letters pick these up as thin bright lines
+const pmrem = new THREE.PMREMGenerator(renderer);
+{ const s = new THREE.Scene(); s.background = new THREE.Color(0);
+  const box = (w, h, pos, I) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(I, I, I), side: THREE.DoubleSide })); m.position.set(...pos); m.lookAt(0, 0, 0); s.add(m); };
+  box(10, 3.6, [0, 6.5, 1.5], 3.4); box(1, 9, [6.5, 1, -.5], 3.2); box(.7, 9, [-6.5, 1.6, -2.5], 4.2); box(7, 7, [-5, 2.5, 5], .3); box(7, .4, [0, -.8, 7], 1.3); box(.5, 6, [2.5, 3, -6.5], 3);
+  scene.environment = pmrem.fromScene(s, .02).texture; }
+const key = new THREE.SpotLight(0xfff4e8, 0, 0, .5, .95, 0); key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -.0002; key.shadow.normalBias = .01; key.shadow.camera.near = .5; key.shadow.camera.far = 30; scene.add(key, key.target);
+const rim = new THREE.DirectionalLight(0xdbe4ff, 0); rim.position.set(-6, 2.5, -6); scene.add(rim);
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v)), lerp = (a, b, k) => a + (b - a) * k, smooth = k => (k = clamp(k), k * k * (3 - 2 * k));
+const eio = k => (k = clamp(k), k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2), eoutExpo = k => (k = clamp(k), k === 1 ? 1 : 1 - Math.pow(2, -10 * k));
+
+/* ---- material: one satin black for body, rim and letters — the logo is carved, not printed ---- */
+const BLACK = new THREE.MeshPhysicalMaterial({ color: 0x0b0b0c, metalness: .2, roughness: .4, clearcoat: .6, clearcoatRoughness: .3 });
+const DOT = new THREE.MeshPhysicalMaterial({ color: 0xff7a1f, roughness: .3, clearcoat: 1, emissive: 0xff5a1f, emissiveIntensity: .25 });
+
+function stadium(P, len, wid, cx = 0, cz = 0) { const r = wid / 2, h = len / 2 - r; P.moveTo(cx - r, -(cz - h)); P.absarc(cx, -(cz - h), r, Math.PI, 0, true); P.lineTo(cx + r, -(cz + h)); P.absarc(cx, -(cz + h), r, 0, Math.PI, true); P.closePath(); return P; }
+function ext(shape, depth, bev) { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 6, curveSegments: 48 }); g.rotateX(-Math.PI / 2); return g; }
+const m = (g, mat, par, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, mat); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; par.add(o); return o; };
+
+// a capsule: raised rim, recessed track, letters standing up out of the track floor, reading along the length
+function capsule(font, word, len, wid, size, dotAt, textZ = 0) {
+  const g = new THREE.Group(), H = .26, LIP = .1, FLOOR = .15;
+  m(ext(stadium(new THREE.Shape(), len, wid), FLOOR, .03), BLACK, g, 0, 0, 0);                                    // body up to the track floor
+  const ring = stadium(new THREE.Shape(), len, wid); ring.holes.push(stadium(new THREE.Path(), len - LIP * 2, wid - LIP * 2));
+  m(ext(ring, H, .045), BLACK, g, 0, 0, 0);                                                                     // the rim
+  // two notches cut into the rim at the head, like the reference's slots
+  const tg = new TextGeometry(word, { font, size, depth: .07, curveSegments: 14, bevelEnabled: true, bevelThickness: .02, bevelSize: .012, bevelSegments: 6 });
+  tg.computeBoundingBox(); const bb = tg.boundingBox; tg.translate(-(bb.max.x + bb.min.x) / 2, -(bb.max.y + bb.min.y) / 2, 0);
+  tg.rotateX(-Math.PI / 2); tg.rotateY(Math.PI / 2);                                                            // lie flat, then run along the capsule, reading bottom → top
+  m(tg, BLACK, g, 0, FLOOR + .02, textZ);
+  if (dotAt !== undefined) { const d = m(new THREE.CylinderGeometry(.045, .045, .02, 40), DOT, g, 0, FLOOR + .04, dotAt); d.castShadow = false; }
+  return g;
+}
+
+/* ---- post ---- */
+const rt = new THREE.WebGLRenderTarget(FW, FH, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, rt); composer.setPixelRatio(1); composer.setSize(FW, FH);
+composer.addPass(new RenderPass(scene, camera));
+const bokeh = new BokehPass(scene, camera, { focus: 6, aperture: .004, maxblur: .008 }); composer.addPass(bokeh);
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(FW, FH), .35, .5, 2.2)); composer.addPass(new OutputPass());
+const grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFade: { value: 1 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uT,uFade; varying vec2 vUv; float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233))+uT*91.7)*43758.5453); }
+    void main(){ vec3 c=texture2D(tDiffuse,vUv).rgb; vec2 q=vUv-.5; q.x*=1.6; c*=mix(1.,smoothstep(.95,.2,length(q)),.5); c+=(h(vUv*1000.)-.5)*.03; gl_FragColor=vec4(c*uFade,1.); }` });
+composer.addPass(grade);
+window.setFrameSize = (w, h) => { FW = w; FH = h; renderer.setSize(FW, FH, false); composer.setSize(FW, FH); out.width = FW; out.height = FH; };
+
+/* ---- scene + 8s loop ---- */
+const font = new Font(await new Promise((res, rej) => new TTFLoader().load('inter-tight-700.woff', res, undefined, rej)));
+const rig = new THREE.Group(), tilt = new THREE.Group(), lean = new THREE.Group(); scene.add(rig); rig.add(tilt); tilt.add(lean);
+const A = capsule(font, 'eleven', 4.1, 1.05, .66, -1.72, .42), B = capsule(font, '11', 2.5, 1.05, .66, -.95);
+lean.add(A); lean.add(B);
+const END = 8;
+function setTime(t) {
+  // A turns into the light; B slides up out of the dark and docks beside it; the light rakes across both
+  tilt.rotation.z = lerp(-.62, -.5, eio(t / END)); lean.rotation.x = .92; lean.rotation.y = lerp(-.35, .12, eio(t / 5));
+  A.position.set(-.58, 0, -.3); A.rotation.y = 0;
+  const dk = eoutExpo((t - 2.6) / 1.1); B.position.set(lerp(1.8, .58, dk), lerp(-.35, 0, dk), lerp(3.6, .55, dk));
+  B.visible = t > 2.4;
+  const cz = lerp(6.4, 5.3, eio(t / END)); camera.position.set(lerp(.5, -.15, eio(t / END)), lerp(-.5, .2, eio(t / END)), cz); camera.lookAt(0, -.05, 0);
+  camera.aspect = FW / FH; camera.updateProjectionMatrix();
+  const sw = eio((t - .4) / 6.5); key.position.set(lerp(-6, 6.5, sw), lerp(2.2, 3.2, sw), 3.4); key.target.position.set(0, 0, 0); key.target.updateMatrixWorld();
+  key.intensity = 7 * smooth((t - .1) / 1.2); rim.intensity = 2.2 * smooth((t - .3) / 1.5); scene.environmentIntensity = lerp(.06, .62, smooth((t - .2) / 2.2));
+  scene.environmentRotation.set(0, lerp(-1.1, .9, t / END), 0);
+  DOT.emissiveIntensity = t > 3.6 ? 2.5 : .2;
+  bokeh.uniforms.focus.value = camera.position.length();
+  grade.uniforms.uT.value = t; grade.uniforms.uFade.value = smooth(t / .5) * (1 - smooth((t - 7.6) / .4));
+}
+window.renderAt = (t, samples = 1) => { setTime(t); composer.render(); octx.drawImage(renderer.domElement, 0, 0); return true; };
+window.blurAt = () => 1; window.frameData = (q = .95) => out.toDataURL('image/jpeg', q);
+window.END = END; window.FPS = FPS; window.FILM_NAME = 'Carved logo'; window.POSTER_T = 6.2;
+renderAt(+(Q.get('t') || 6.2)); window.READY = true;
+</script>
+<script src="player.js"></script>
+</body></html>

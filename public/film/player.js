@@ -33,7 +33,7 @@
     // UI
     const big = document.createElement('div'); big.className = 'fp-big'; big.innerHTML = `<b></b><span>PLAY ${(window.FILM_NAME || 'FILM').toUpperCase()}</span>`; document.body.appendChild(big);
     const bar = document.createElement('div'); bar.className = 'fp-bar';
-    const films = [['radio', '08 RADIO'], ['transitions', 'TRANSITIONS']], here = location.pathname.split('/').pop().replace('.html', '');
+    const films = [['transitions', 'TRANSITIONS'], ['radio', '08 RADIO'], ['logo', 'CARVED LOGO']], here = location.pathname.split('/').pop().replace('.html', '');
     bar.innerHTML = `<button data-k="play">PLAY</button><span class="t">00:00.00</span><input type="range" min="0" max="${END}" step="${1 / FPS}" value="0">
       <button data-k="loop" class="on">LOOP</button>${audio ? '<button data-k="snd" class="on">SOUND</button>' : ''}<button data-k="hq">HQ</button><button data-k="fs">FULL</button>
       <span style="color:#3a3a3d">|</span>${films.map(([k, n]) => `<a href="${k}" class="${k === here ? 'cur' : ''}">${n}</a>`).join('')}`;
