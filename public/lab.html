@@ -285,7 +285,7 @@ const hemi = new THREE.HemisphereLight(0xffffff, 0x8f8b84, .22); scene.add(hemi)
 const sun = new THREE.DirectionalLight(0xfff8f0, 1.8);
 const rim = new THREE.DirectionalLight(0xd6defa, 0); rim.position.set(10, 3.3, 1.6); scene.add(rim);
 sun.castShadow = true; sun.shadow.mapSize.set(LOW ? 1024 : 2048, LOW ? 1024 : 2048);
-sun.shadow.radius = 14; sun.shadow.blurSamples = LOW ? 12 : 24; sun.shadow.bias = -.0004; sun.shadow.normalBias = .01;
+sun.shadow.radius = 14; sun.shadow.blurSamples = 12; sun.shadow.bias = -.0004; sun.shadow.normalBias = .01;
 scene.add(sun); scene.add(sun.target);
 let SIDE = false;
 function setSunBounds(w, d) { const s = Math.max(w, d) / 2 + (SIDE ? 2.6 : 1.4), c = sun.shadow.camera; c.left = -s; c.right = s; c.top = s; c.bottom = -s; c.near = 1; c.far = 40; c.updateProjectionMatrix(); if (SIDE) sun.position.set(-10, 3.4, -2.4); else sun.position.set(-3.6, 11, -5.2); sun.target.position.set(0, 0, 0); }
@@ -1893,6 +1893,7 @@ function loopBody() {
   if (busy || S.now - lastBusy < .05) { ao.needsFrame = true; PERF.busyN = (PERF.busyN || 0) + 1; PERF.why = [morph && 'morph', active && 'active', drag && 'drag', EDIT && 'edit', Math.abs(cam.d - cam.wd) > .002 && 'camd', cam.t.distanceTo(cam.wt) > .002 && 'camt', allKeys.some(k => k.press > 0) && 'keys', allToggles.some(k => Math.abs(k.target - (k.cur ?? k.target)) > .001) && 'tog', Object.values(modules).some(m => m.anim) && 'manim', panels.some(p => p.anim) && 'panim'].filter(Boolean).join(','); } if (busy) lastBusy = S.now;
   if (!PERF.done && BOOT_T && t > BOOT_T + 6 && !MOTION) { PERF.n++; if (dt < 1 / 45) PERF.fast = (PERF.fast || 0) + 1; if (PERF.n >= 90) { PERF.done = true; if (PERF.fast > 72 && !LOW) perfUpgrade(); } }
   PERF.frames++; if (!busy && !HQ && PERF.done && PERF.frames % 2) return; // idle on low tier: ~30 fps is plenty for the screens
+  sun.shadow.autoUpdate = false; if (busy || MOTION || PERF.frames % 4 === 0 || PERF.frames < 12) sun.shadow.needsUpdate = true; // the shadow map is the costliest fixed pass: redraw it every frame only while something big moves
   if (PROF) { PROF.mid += performance.now() - PROF.t1; const r0 = performance.now(); composer.render(); PROF.render += performance.now() - r0; PROF.rn++; } else composer.render();
   if (PERF.frames === 4) document.getElementById('boot').classList.add('done');
 }
