@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://eleven11ai.com/og.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%23FF5A1F'/%3E%3Cg fill='%23141414'%3E%3Crect x='6' y='12' width='4' height='24'/%3E%3Crect x='14' y='12' width='4' height='24'/%3E%3Crect x='22' y='18' width='4' height='4'/%3E%3Crect x='22' y='26' width='4' height='4'/%3E%3Crect x='30' y='12' width='4' height='24'/%3E%3Crect x='38' y='12' width='4' height='24'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#151517;--mute:#8a8882;--panel:rgba(246,245,241,.88);--line:#cbc9c2;--or:#FF5A1F}
 body.dark{--ink:#EDEBE6;--mute:#7d7c78;--panel:rgba(26,26,29,.88);--line:#050506}
@@ -115,7 +115,7 @@ body.dark .seg button.on{color:#141414}
   <button class="key" id="bSound">SOUND</button>
   <button class="key" id="bTheme">BLACK</button>
 </div>
-<aside id="card" class="hud"></aside>
+<aside id="card" class="hud hide"></aside>
 <div id="tray" class="hud hide"></div>
 <input type="file" id="fileIn" accept="image/*" hidden>
 <div id="log" class="hud"></div>
@@ -467,7 +467,7 @@ function buildChassis(FW, FD) {
    ========================================================= */
 const pick = [];
 const reg = (mesh, ctrl) => { mesh.userData.ctrl = ctrl; pick.push(mesh); };
-const allKeys = [], allToggles = [], allLeds = [];
+const allKeys = [], allToggles = [], allLeds = [], WHEEL_HOOKS = []; // WHEEL_HOOKS: a device can claim the mouse wheel while the pointer is over it
 const ray = new THREE.Raycaster(), ndc = new V2();
 function setNDC(e) { const r = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); }
 function pickAt(e) { setNDC(e); return ray.intersectObjects(pick, false)[0] || null; }
@@ -1146,7 +1146,7 @@ async function loadBand(b) {
   if (RADIO.lists[b]) return RADIO.lists[b]; RADIO.status = 'LOADING';
   const q = '/json/stations/search?' + (BANDS[b][1] ? 'countrycode=' + BANDS[b][1] + '&' : '') + 'order=clickcount&reverse=true&limit=60&hidebroken=true&is_https=true';
   for (const h of RB_HOSTS) { try { const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 7000); const r = await fetch(h + q, { signal: ctl.signal }); clearTimeout(to); if (!r.ok) continue; const j = await r.json();
-      const L = j.filter(s => s.url_resolved && !s.hls && /^https:/i.test(s.url_resolved)).slice(0, 24).map((s, i) => ({ n: (String(s.name || '').toUpperCase().replace(/[^A-Z0-9 .+\-]/g, ' ').replace(/\s+/g, ' ').trim() || 'STATION ' + (i + 1)).slice(0, 28), u: s.url_resolved }));
+      const L = j.filter(s => s.url_resolved && !s.hls && /^https:/i.test(s.url_resolved)).slice(0, 36).map((s, i) => ({ n: (String(s.name || '').toUpperCase().replace(/[^A-Z0-9 .+\-]/g, ' ').replace(/\s+/g, ' ').trim() || 'STATION ' + (i + 1)).slice(0, 28), u: s.url_resolved }));
       if (L.length) { RADIO.lists[b] = L; return L; } } catch (e) { } }
   RADIO.status = 'NO SIGNAL'; return null;
 }
@@ -1164,10 +1164,10 @@ function startStream() {
   // face: speaker · backlit tuning dial with a real needle · one-line station strip · band keys
   const DX = .2, DZ = -.285, DW = .9, DD = .16;
   m.scr = m.screen({ x: DX, z: -.01, cols: 40, rows: 7, mode: 'led', s: 12 });
-  const PRESETS = 12, DRW = { open: false, k: 0 };
+  const PRESETS = 12, DRW = { open: false, k: 0, page: 0 }, pages = () => Math.max(1, Math.ceil((RADIO.lists[RADIO.band]?.length || 0) / PRESETS));
   const turnOn = () => { ensureAC(); cdStop(); RADIO.on = true; DRW.open = true; const b = RADIO.band; loadBand(b).then(L => { if (!RADIO.on || RADIO.band !== b) return; if (L) { RADIO.pendT = S.now + .05; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else log('RADIO: NO SIGNAL · CHECK CONNECTION'); }); };
-  const setIdx = (i, fromKnob) => { const L = RADIO.lists[RADIO.band]; if (!L) return; i = (i + L.length) % L.length; if (i === RADIO.idx && fromKnob) return; RADIO.idx = i; if (!fromKnob) m.tune.set(L.length > 1 ? i / (L.length - 1) : 0, true); beep(1800 + Math.random() * 600, .012, 'square', .02); if (RADIO.on) { stopStream(); RADIO.status = 'TUNING'; RADIO.tuneT = S.now; RADIO.pendT = S.now + .45; } };
-  m.radio({ x: .1, z: .33, items: BANDS.map(b => b[0]), w: .17, d: .12, gap: .07, dir: 'row', value: 0, tone: 'dark', onChange: b => { RADIO.band = b; RADIO.idx = 0; m.tune.set(0, true); stopStream(); loadBand(b).then(L => { if (L && RADIO.on && RADIO.band === b) { RADIO.pendT = S.now + .1; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else if (L && !RADIO.on) RADIO.status = 'OFF'; }); } });
+  const setIdx = (i, fromKnob) => { const L = RADIO.lists[RADIO.band]; if (!L) return; i = (i + L.length) % L.length; if (i === RADIO.idx && fromKnob) return; RADIO.idx = i; DRW.page = Math.floor(i / PRESETS); if (!fromKnob) m.tune.set(L.length > 1 ? i / (L.length - 1) : 0, true); beep(1800 + Math.random() * 600, .012, 'square', .02); if (RADIO.on) { stopStream(); RADIO.status = 'TUNING'; RADIO.tuneT = S.now; RADIO.pendT = S.now + .45; } };
+  m.radio({ x: .1, z: .33, items: BANDS.map(b => b[0]), w: .17, d: .12, gap: .07, dir: 'row', value: 0, tone: 'dark', onChange: b => { RADIO.band = b; RADIO.idx = 0; DRW.page = 0; m.tune.set(0, true); stopStream(); loadBand(b).then(L => { if (L && RADIO.on && RADIO.band === b) { RADIO.pendT = S.now + .1; RADIO.status = 'TUNING'; RADIO.tuneT = S.now; } else if (L && !RADIO.on) RADIO.status = 'OFF'; }); } });
   m.tune = m.knob({ x: .84, z: -.27, r: .115, value: 0, label: 'TUNE', onChange: v => { const L = RADIO.lists[RADIO.band]; if (L) setIdx(Math.round(v * (L.length - 1)), true); } });
   m.listKey = m.key({ x: .84, z: .1, w: .22, d: .1, label: 'LIST', tone: 'dark', lamp: true, onPress: () => { DRW.open = !DRW.open; if (DRW.open) loadBand(RADIO.band).then(() => { if (!RADIO.on) RADIO.status = 'OFF'; }); beep(DRW.open ? 620 : 420, .03); log(DRW.open ? 'RADIO: PRESETS OPEN' : 'RADIO: PRESETS CLOSED'); } });
   m.onKey = m.pill({ x: .84, z: .35, len: .16, r: .045, accent: true, lamp: true, onPress: () => { if (RADIO.on) { radioOff(); DRW.open = false; log('RADIO: OFF'); return; } turnOn(); } });
@@ -1186,12 +1186,12 @@ function startStream() {
   const dgl = new THREE.Mesh(new THREE.PlaneGeometry(DW, DD), MAT.glass); dgl.rotation.x = -Math.PI / 2; dgl.position.set(DX, m.th + .024, DZ); dgl.userData.noAO = true; m.inner.add(dgl);
   { const bw = .03, ow = DW + .05 + bw * 2, od = DD + .05 + bw * 2, bar = (bx, bz, sx, sz) => { const b = new THREE.Mesh(new RoundedBoxGeometry(sx, .034, sz, 2, .009), MAT.capD); b.position.set(DX + bx, m.th + .012, DZ + bz); b.castShadow = true; m.inner.add(b); }; bar(0, -od / 2 + bw / 2, ow, bw); bar(0, od / 2 - bw / 2, ow, bw); bar(-ow / 2 + bw / 2, 0, bw, od); bar(ow / 2 - bw / 2, 0, bw, od); }
   let dialKey = '';
-  const drawDial = () => { const L = RADIO.lists[RADIO.band], n = L ? L.length : 0, key = RADIO.band + '|' + n; if (key === dialKey) return; dialKey = key; const c = dcv.getContext('2d'), W = dcv.width, H = dcv.height;
+  const drawDial = () => { const L = RADIO.lists[RADIO.band], n = L ? L.length : 0, key = RADIO.band + '|' + n + '|' + DRW.page; if (key === dialKey) return; dialKey = key; const c = dcv.getContext('2d'), W = dcv.width, H = dcv.height;
     const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#F3E3B4'); g.addColorStop(1, '#D9B56A'); c.fillStyle = g; c.fillRect(0, 0, W, H);
     c.fillStyle = '#2a2014'; const x0 = 50, x1 = W - 50; c.fillRect(x0, 96, x1 - x0, 3);
     for (let i = 0; i <= 100; i++) { const x = x0 + (x1 - x0) * i / 100, h = i % 10 === 0 ? 34 : i % 5 === 0 ? 22 : 12; c.fillRect(x - 1, 96 - h, i % 10 === 0 ? 3 : 2, h); }
     for (let i = 0; i <= 10; i++) drawType(c, String(88 + i * 2), x0 + (x1 - x0) * i / 10, 32, 26, '#2a2014');
-    for (let i = 0; i < n; i++) { const x = x0 + (x1 - x0) * (n > 1 ? i / (n - 1) : 0); c.fillStyle = i < PRESETS ? '#B5421A' : '#6b5a3a'; c.fillRect(x - 2, 112, 4, i < PRESETS ? 30 : 18); }
+    for (let i = 0; i < n; i++) { const x = x0 + (x1 - x0) * (n > 1 ? i / (n - 1) : 0); const inPg = Math.floor(i / PRESETS) === DRW.page; c.fillStyle = inPg ? '#B5421A' : '#6b5a3a'; c.fillRect(x - 2, 112, 4, inPg ? 30 : 18); }
     drawType(c, 'FM · ' + BANDS[RADIO.band][0] + (n ? ' · ' + n + ' STATIONS' : ''), x0, 176, 24, '#5a4520', 'left'); drawType(c, 'MHZ', x1, 176, 24, '#5a4520', 'right'); dtx.needsUpdate = true; };
   drawDial();
   // --- presets drawer: slides out from under the device; a bank of real keys, each with its own scribble strip
@@ -1199,20 +1199,50 @@ function startStream() {
   const tray = new THREE.Mesh(planarUV(new RoundedBoxGeometry(DW2, .05, DD2, 4, .02), 0, 0), MAT.shell); tray.castShadow = tray.receiveShadow = true; dr.add(tray);
   const bed2 = new THREE.Mesh(new THREE.PlaneGeometry(DW2 - .08, DD2 - .2), MAT.dark); bed2.rotation.x = -Math.PI / 2; bed2.position.set(0, .0262, .02); dr.add(bed2);
   for (let i = 0; i < 7; i++) { const r = new THREE.Mesh(new RoundedBoxGeometry(.5, .014, .012, 2, .004), MAT.capD); r.position.set(0, .03, DD2 / 2 - .085 + (i - 3) * .0001 + (i % 2 ? .018 : 0) * 0 + (i - 3) * .014); dr.add(r); } // pull grip
-  const strips = [], pkeys = [], cellW = (DW2 - .1) / 6;
-  for (let i = 0; i < PRESETS; i++) { const col = i % 6, row = (i / 6) | 0, cx = -DW2 / 2 + .05 + cellW * (col + .5), cz = -DD2 / 2 + .17 + row * .265;
-    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 96; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8; const sm = new THREE.MeshBasicMaterial({ map: tx });
-    const st = new THREE.Mesh(new THREE.PlaneGeometry(cellW - .03, .08), sm); st.rotation.x = -Math.PI / 2; st.position.set(cx, .0275, cz); st.userData.cannotReceiveAO = true; dr.add(st); strips.push({ cv, tx, sm });
-    const lm = m._lamp(), cap = new THREE.Mesh(planarUV(new RoundedBoxGeometry(cellW - .05, .05, .11, 4, .016), cx * 3, cz * 3), lm); cap.position.set(cx, .04, cz + .115); cap.castShadow = true; dr.add(cap);
-    const k = { type: 'key', press: 0, on: false, start() { this.press = 1; const L = RADIO.lists[RADIO.band]; if (!L || i >= L.length) { beep(200, .04); return; } setIdx(i); if (!RADIO.on) turnOn(); beep(700 + i * 40, .03); }, move() { }, tick(dt) { this.press = Math.max(0, this.press - dt * 5); cap.position.y = .04 - .014 * Math.min(1, this.press * 1.6) - (this.on ? .006 : 0); lm.emissiveIntensity += ((this.on ? 1.7 : 0) - lm.emissiveIntensity) * Math.min(1, dt * 10); } };
-    reg(cap, k); reg(st, k); k.owner = m; allKeys.push(k); pkeys.push(k); }
+  // each preset key carries its station's name printed big on the cap itself — backlit legend, condensed type, sized to fill the key
+  const legends = [], pkeys = [], cellW = (DW2 - .1) / 6, CW = cellW - .036, CD = .22, CH = .05;
+  for (let i = 0; i < PRESETS; i++) { const col = i % 6, row = (i / 6) | 0, cx = -DW2 / 2 + .05 + cellW * (col + .5), cz = -.17 + row * .25;
+    const lm = m._lamp(), cap = new THREE.Mesh(planarUV(new RoundedBoxGeometry(CW, CH, CD, 4, .018), cx * 3, cz * 3), lm); cap.position.set(cx, .04, cz); cap.castShadow = true; dr.add(cap);
+    const cv = document.createElement('canvas'); cv.width = 640; cv.height = Math.round(640 * (CD - .016) / (CW - .016)); const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 16;
+    const lg = new THREE.Mesh(new THREE.PlaneGeometry(CW - .016, CD - .016), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false })); lg.rotation.x = -Math.PI / 2; lg.position.y = CH / 2 + .0015; lg.userData.noAO = true; cap.add(lg); legends.push({ cv, tx });
+    const k = { type: 'key', press: 0, on: false, start() { this.press = 1; const L = RADIO.lists[RADIO.band], j = DRW.page * PRESETS + i; if (!L || j >= L.length) { beep(200, .04); return; } setIdx(j); if (!RADIO.on) turnOn(); beep(700 + i * 40, .03); }, move() { }, tick(dt) { this.press = Math.max(0, this.press - dt * 5); cap.position.y = .04 - .014 * Math.min(1, this.press * 1.6) - (this.on ? .006 : 0); lm.emissiveIntensity += ((this.on ? 1.7 : 0) - lm.emissiveIntensity) * Math.min(1, dt * 10); } };
+    reg(cap, k); k.owner = m; allKeys.push(k); pkeys.push(k); }
   reg(tray, { type: 'key', press: 0, start() { }, move() { }, tick() { } });
+  // --- scrolling the list: ◀ ▶ page keys on the drawer lip, printed page pips + counter, and the mouse wheel / trackpad over the drawer
+  const setPage = (p, snd = true) => { const N = pages(); p = clamp(p, 0, N - 1); if (p === DRW.page) { if (snd) beep(200, .03); return; } DRW.page = p; if (snd) { beep(p > 0 ? 880 : 660, .025, 'square', .03); log('RADIO: STATIONS ' + (p * PRESETS + 1) + '-' + Math.min((p + 1) * PRESETS, RADIO.lists[RADIO.band]?.length || 0)); } };
+  const PZ = DD2 / 2 - .085, pagers = [];
+  [[-1, 'L', -.7], [1, 'R', .7]].forEach(([dir, gl, px]) => { const w = .3, d = .1, h = .05, cap = new THREE.Mesh(planarUV(new RoundedBoxGeometry(w, h, d, 4, .016), px * 3, PZ * 3), MAT.capD); cap.position.set(px, .04, PZ); cap.castShadow = true; dr.add(cap);
+    m._capLabel(cap, w, d, h / 2 - .0005, '', () => '#FF7A3A', gl);
+    const k = { type: 'key', press: 0, on: false, start() { this.press = 1; setPage(DRW.page + dir); }, move() { }, tick(dt) { this.press = Math.max(0, this.press - dt * 5); cap.position.y = .04 - .014 * Math.min(1, this.press * 1.6); } };
+    reg(cap, k); k.owner = m; allKeys.push(k); pagers.push(k); });
+  m.pageKeys = pagers;
+  const mkPrint = x => { const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 16;
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(.3, .075), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false })); pl.rotation.x = -Math.PI / 2; pl.position.set(x, .0275, PZ); pl.userData.noAO = true; dr.add(pl); return { c: cv.getContext('2d'), tx }; };
+  const pPips = mkPrint(-.4), pCount = mkPrint(.4);
+  const drawPager = () => { const N = pages(), n = RADIO.lists[RADIO.band]?.length || 0, c = pPips.c, c2 = pCount.c; c.clearRect(0, 0, 512, 128); c2.clearRect(0, 0, 512, 128);
+    for (let p = 0; p < N; p++) { c.fillStyle = p === DRW.page ? '#FF6A2A' : '#4a4743'; c.fillRect(256 - N * 44 + p * 88 + 8, 34, 72, 60); }
+    drawType(c2, n ? String(DRW.page * PRESETS + 1).padStart(2, '0') + '-' + String(Math.min(n, (DRW.page + 1) * PRESETS)).padStart(2, '0') + ' / ' + n : '-- / --', 256, 64, 70, '#EDEAE2');
+    pPips.tx.needsUpdate = pCount.tx.needsUpdate = true; };
+  let wAcc = 0, wT = 0;
+  WHEEL_HOOKS.push(e => { if (!DRW.open || DRW.k < .9 || !dr.visible) return false; const hit = pickAt(e); let o = hit?.object; while (o && o !== dr) o = o.parent; if (!o) return false;
+    const now = performance.now(); wAcc += Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX; if (Math.abs(wAcc) > 40 && now - wT > 260) { setPage(DRW.page + Math.sign(wAcc)); wAcc = 0; wT = now; } return true; });
+  const KEYTYPE = '"Barlow Condensed", "Roboto Condensed", "Arial Narrow", sans-serif';
+  const fitName = (c, name, W, H) => { // try 1–3 lines at every word break, keep the split that gives the biggest type
+    const words = name.split(' ').filter(Boolean); c.font = `700 100px ${KEYTYPE}`; const wid = s => c.measureText(s).width / 100;
+    const splits = [[words]]; for (let a = 1; a < words.length; a++) { splits.push([words.slice(0, a), words.slice(a)]); for (let b = a + 1; b < words.length; b++) splits.push([words.slice(0, a), words.slice(a, b), words.slice(b)]); }
+    let best = null; for (const sp of splits) { const lines = sp.map(w => w.join(' ')), h = Math.min(196, H / (lines.length * 1.02), ...lines.map(l => W / Math.max(.01, wid(l)))), sc = h * (1 - .06 * (lines.length - 1));
+      if (!best || sc > best.sc) best = { lines, h, sc }; }
+    return best; };
   let stripKey = '';
-  const drawStrips = () => { const L = RADIO.lists[RADIO.band], key = RADIO.band + '|' + (L ? L.length : 0) + '|' + RADIO.idx + '|' + RADIO.on; if (key === stripKey) return; stripKey = key;
-    strips.forEach((s, i) => { const c = s.cv.getContext('2d'), sel = L && i === RADIO.idx, name = L && L[i] ? L[i].n : '—'; c.fillStyle = sel ? '#FF6A2A' : '#101012'; c.fillRect(0, 0, 320, 96); c.fillStyle = sel ? '#1a1a1a' : '#55534e'; c.fillRect(0, 0, 320, 4);
-      drawType(c, String(i + 1).padStart(2, '0'), 14, 26, 24, sel ? '#1a1a1a' : '#FF6A2A', 'left'); const words = name.split(' '), l1 = [], l2 = []; words.forEach(w => ((l1.join(' ') + ' ' + w).trim().length <= 13 && !l2.length ? l1 : l2).push(w));
-      drawType(c, l1.join(' ').slice(0, 13), 60, 26, 25, sel ? '#1a1a1a' : '#EDEAE2', 'left'); drawType(c, l2.join(' ').slice(0, 17), 14, 68, 25, sel ? '#1a1a1a' : '#a9a69e', 'left'); s.tx.needsUpdate = true; pkeys[i].on = !!sel && RADIO.on; }); };
-  drawStrips();
+  const drawStrips = () => { const L = RADIO.lists[RADIO.band], key = RADIO.band + '|' + (L ? L.length : 0) + '|' + RADIO.idx + '|' + RADIO.on + '|' + DRW.page; if (key === stripKey) return; stripKey = key; drawPager();
+    legends.forEach((s, i) => { const j = DRW.page * PRESETS + i, c = s.cv.getContext('2d'), W = s.cv.width, H = s.cv.height, sel = !!(L && j === RADIO.idx && RADIO.on), name = L && L[j] ? L[j].n : ''; c.clearRect(0, 0, W, H);
+      drawType(c, String(j + 1).padStart(2, '0'), 30, 46, 46, sel ? 'rgba(20,16,14,.7)' : 'rgba(255,214,186,.72)', 'left');
+      if (!name) { c.fillStyle = 'rgba(255,214,186,.35)'; c.fillRect(W / 2 - 60, H * .58, 120, 10); } else {
+        const top = 84, pad = 30, f = fitName(c, name, W - pad * 2, H - top - 30), lh = f.h * 1.02, y0 = top + (H - top - 22 - lh * f.lines.length) / 2 + lh / 2;
+        c.font = `700 ${Math.round(f.h)}px ${KEYTYPE}`; try { c.letterSpacing = '0px'; } catch (e) { } c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = sel ? '#141110' : '#FFF6EC';
+        f.lines.forEach((l, j) => c.fillText(l, W / 2, y0 + j * lh + f.h * .04)); }
+      s.tx.needsUpdate = true; pkeys[i].on = sel; }); };
+  drawStrips(); document.fonts?.load(`700 100px "Barlow Condensed"`).then(() => { stripKey = ''; drawStrips(); }).catch(() => { });
   m.liftH = .34;
   TICKERS.push((dt, t) => { if (RADIO.on && RADIO.pendT && t > RADIO.pendT) { RADIO.pendT = 0; startStream(); } if (RADIO.status === 'TUNING' && !RADIO.pendT && t - RADIO.tuneT > 12) RADIO.status = 'NO SIGNAL';
     m.led_.set(RADIO.status === 'LIVE' || (RADIO.on && Math.floor(t * 4) % 2 === 0)); m.onKey.on = RADIO.on; m.listKey.on = DRW.open;
@@ -1762,7 +1792,7 @@ addEventListener('pointerup', e => {
   else if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 6 && e.target === el) { const h = down.h; if (h && h.object.userData.kind === 'body') select(h.object.userData.mod); else select(null); }
   down = null; panZ = null;
 });
-el.addEventListener('wheel', e => { if (!cam.scroll || selected) return; e.preventDefault(); cam.wt.z = clamp(cam.wt.z + e.deltaY * .004, cam.zMin, cam.zMax); }, { passive: false });
+el.addEventListener('wheel', e => { for (const h of WHEEL_HOOKS) if (h(e)) { e.preventDefault(); return; } if (!cam.scroll || selected) return; e.preventDefault(); cam.wt.z = clamp(cam.wt.z + e.deltaY * .004, cam.zMin, cam.zMax); }, { passive: false });
 el.addEventListener('pointerleave', () => cam.wpar.set(0, 0));
 
 /* ---------- selection + card ---------- */
@@ -1770,9 +1800,8 @@ const card = document.getElementById('card'); let selected = null;
 const bd = s => s.replace(/[A-Za-z0-9(][A-Za-z0-9 .·:'()\-]*[A-Za-z0-9)]|[A-Za-z0-9]/g, w => '<bdi dir="ltr">' + w + '</bdi>');
 function showCard(m) {
   card.classList.toggle('left', !!(m && innerWidth >= 760 && m.group.position.x > (cam.wt?.x ?? 0)));
-  card.classList.remove('hide');
-  if (!m) { card.innerHTML = `<div class="top"><span>ELEVEN11</span><span class="tag">UNDER CONSTRUCTION</span><span class="x" id="cx">X</span></div><h3>الموقع بيتبني… العب شوية</h3><p>${bd('Eleven11 استوديو حلول بالذكاء الاصطناعي: صورة، وصوت، وحركة، وإيفنتس. لحد ما نخلص الموقع: حوّل صورتك لـ 8-bit، والعب STACK، واعزف على البيانو. وتقدر تدوس EDIT وتحرّك الأدوات أو تشيلها أو ترجّعها.')}</p><ol><li><b>01</b>EVERY SOLUTION = A MODULE</li><li><b>02</b>DRAG · DROP · SNAP</li><li><b>03</b>ONE BENTO GRID, ANY SCREEN</li></ol>`; }
-  else { const I = INFO[m.id]; card.innerHTML = `<div class="top"><span>${m.num} ${m.name}</span><span class="tag">${m.w}X${m.h}</span><span class="x" id="cx">X</span></div><h3>${bd(I.ar)}<small><bdi dir="ltr">${m.name}</bdi></small></h3><p>${bd(I.d)}</p><div class="io"><span>IN <i>${I.i}</i></span><span>OUT <i>${I.o}</i></span></div>` + (EDIT ? `<button class="rm" id="rm">REMOVE · شيل الأداة</button>` : ''); const rb = document.getElementById('rm'); if (rb) rb.onclick = () => { removeTool(m.id); card.classList.add('hide'); }; }
+  if (!m) { card.classList.add('hide'); return; } // no welcome popup on entry — the card only opens for a selected device
+  card.classList.remove('hide'); { const I = INFO[m.id]; card.innerHTML = `<div class="top"><span>${m.num} ${m.name}</span><span class="tag">${m.w}X${m.h}</span><span class="x" id="cx">X</span></div><h3>${bd(I.ar)}<small><bdi dir="ltr">${m.name}</bdi></small></h3><p>${bd(I.d)}</p><div class="io"><span>IN <i>${I.i}</i></span><span>OUT <i>${I.o}</i></span></div>` + (EDIT ? `<button class="rm" id="rm">REMOVE · شيل الأداة</button>` : ''); const rb = document.getElementById('rm'); if (rb) rb.onclick = () => { removeTool(m.id); card.classList.add('hide'); }; }
   document.getElementById('cx').onclick = () => { if (selected) select(null); card.classList.add('hide'); };
 }
 function select(m) {
@@ -1920,8 +1949,7 @@ TICKERS.push(dt => { if (!BOOT_T && PERF.frames > 8) { BOOT_T = S.now; for (cons
   setMotion(Object.values(modules).some(m => m.wakeAt || (m.flipK > 0 && m.flipK < 1))); for (const m of Object.values(modules)) { if (m.wakeAt && S.now > m.wakeAt) { m.wakeAt = 0; m.flipped = false; m.wakeFlash = true; } if (m.wasBack && m.flipK === 0) { m.wasBack = false; m.onWake?.(); } if (m.flipK === 1) m.wasBack = true; if (m.wakeFlash && m.flipK === 0) { m.wakeFlash = false; m.ringFlash = 1; beep(90, .05, 'square', .05); } const tg = m.flipped ? 1 : 0, hid = m.flipK > .5; if (m.pokeHid !== hid) { m.pokeHid = hid; m.pokers.forEach(o => o.visible = !hid); } if (m.flipK === tg || m.anim) continue; m.flipK = clamp(m.flipK + Math.sign(tg - m.flipK) * Math.min(dt, .05) / (m.slowFlip ? 1.35 : .7)); if (m.flipK === tg) m.slowFlip = false; const e = easeInOut(m.flipK); m.group.rotation[m.flipAx] = Math.PI * e; m.group.position.y = Math.sin(m.flipK * Math.PI) * .4 + m.th * e; ao.needsFrame = true; } });
 
 loadLayout(); applyLayout(chooseLayout(), true); setTheme('black'); updateTray();
-showCard(null); let cardHover = false; card.onpointerenter = () => cardHover = true; card.onpointerleave = () => cardHover = false;
-const hideWelcome = () => { if (selected) return; if (cardHover) { setTimeout(hideWelcome, 2500); return; } card.classList.add('hide'); }; setTimeout(hideWelcome, innerWidth < 760 ? 6000 : 10000);
+// (welcome popup removed — the info card only appears when a device is selected)
 const clock = new THREE.Clock(); let acc = 0, lastT = 0, lastBusy = 0;
 addEventListener('error', ev => { try { log('ERR ' + String(ev.message).slice(0, 60)); } catch (e) { } });
 let loopErr = 0;
