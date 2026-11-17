@@ -220,7 +220,7 @@ class Screen {
   constructor(cols, rows, { mode = 'lcd', s = 10 } = {}) {
     Object.assign(this, { cols, rows, mode, s });
     this.buf = new Uint8Array(cols * rows);
-    const c = this.canvas = document.createElement('canvas'); c.width = cols * s; c.height = rows * s; this.ctx = c.getContext('2d');
+    const c = this.canvas = document.createElement('canvas'); c.width = cols * s; c.height = rows * s; this.ctx = c.getContext('2d', { willReadFrequently: true }); // CPU-backed canvas: uploading it to the GPU every frame stays cheap
     this.tex = new THREE.CanvasTexture(c); this.tex.colorSpace = THREE.SRGBColorSpace; this.tex.anisotropy = 8; this.tex.generateMipmaps = true; this.tex.minFilter = THREE.LinearMipmapLinearFilter;
   }
   clear(v = 0) { this.buf.fill(v); return this; }
@@ -235,6 +235,7 @@ class Screen {
   icon(name, x, y, v = 1, set = ICONS) { const g = set[name]; if (!g) return; for (let r = 0; r < g.length; r++) for (let c = 0; c < g[r].length; c++) if (g[r][c] === '#') this.px(x + c, y + r, v); }
   render() {
     const { ctx, s, cols, buf } = this, W = cols * s, H = this.rows * s;
+    let hsh = 2166136261; for (let i = 0; i < buf.length; i++) hsh = Math.imul(hsh ^ buf[i], 16777619); if (this.remap) for (const v of this.remap) hsh = Math.imul(hsh ^ (v + 7), 16777619); if (hsh === this._h) return; this._h = hsh; // nothing changed: no redraw, no upload
     if (this.mode === 'lcd') {
       ctx.fillStyle = LCDBG; ctx.fillRect(0, 0, W, H);
       const q = s - Math.max(1, Math.round(s * .12)), o = Math.max(1, Math.round(s * .22));
