@@ -146,7 +146,7 @@ const easeOut = t => 1 - Math.pow(1 - t, 3);
 const easeIn = t => t * t * t;
 const TICKERS = []; // per-frame callbacks (flip clock, polaroid…)
 const VIS = { val: 0, shown: 0, ok: false }; // site visitor counter (shown on the STATUS odometer)
-async function visFetch(hit) { try { const r = await fetch('https://abacus.jasoncameron.dev/' + (hit ? 'hit' : 'get') + '/eleven11ai.com/visits'); const j = await r.json(); if (isFinite(+j.value)) { VIS.val = +j.value; VIS.ok = true; } } catch (e) { } }
+async function visFetch(hit) { const c = new AbortController(), tm = setTimeout(() => c.abort(), 7000); try { const r = await fetch('https://countapi.mileshilliard.com/api/v1/' + (hit ? 'hit' : 'get') + '/eleven11ai_visits', { signal: c.signal }); const j = await r.json(); if (j.value !== undefined && isFinite(+j.value)) { VIS.val = +j.value; VIS.ok = true; } else if (!hit && r.status === 404) await visFetch(true); } catch (e) { } clearTimeout(tm); } // free public counter; swap for our own endpoint later
 { let seen = true; try { seen = !!sessionStorage.getItem('e11-visit'); sessionStorage.setItem('e11-visit', '1'); } catch (e) { } const real = /(^|\.)eleven11ai\.com$/.test(location.hostname); // one count per browser session, only on the real site
   setTimeout(() => visFetch(real && !seen).then(() => { if (VIS.ok && typeof log === 'function') log('VISITOR NO. ' + VIS.val); }), 2500); setInterval(() => visFetch(false), 60000); }
 const easeInOut = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
