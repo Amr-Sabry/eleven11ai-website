@@ -15,7 +15,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 /* ============ setup ============ */
-const Q = new URLSearchParams(location.search), FPS = 30; let FW = +(Q.get('w') || innerWidth), FH = +(Q.get('h') || innerHeight);
+const Q = new URLSearchParams(location.search), FPS = 30; let FW = +(Q.get('w') || innerWidth || 1280), FH = +(Q.get('h') || innerHeight || 720); // a tab opened in the background can report 0×0
 const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(1); renderer.setSize(FW, FH); renderer.domElement.id = 'gl'; document.body.appendChild(renderer.domElement);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;

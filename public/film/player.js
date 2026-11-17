@@ -42,7 +42,7 @@
     const $ = k => bar.querySelector(`[data-k="${k}"]`), range = bar.querySelector('input'), tEl = bar.querySelector('.t');
     const fmt = s => { const m = Math.floor(s / 60), r = s - m * 60; return String(m).padStart(2, '0') + ':' + r.toFixed(2).padStart(5, '0'); };
 
-    function fit() { const w = innerWidth, h = innerHeight; let cw = w, ch = Math.round(w * 9 / 16); if (ch > h) { ch = h; cw = Math.round(h * 16 / 9); }
+    function fit() { const w = innerWidth, h = innerHeight; if (!w || !h) { setTimeout(fit, 250); return; } let cw = w, ch = Math.round(w * 9 / 16); if (ch > h) { ch = h; cw = Math.round(h * 16 / 9); }
       Object.assign(out.style, { width: cw + 'px', height: ch + 'px', left: ((w - cw) / 2) + 'px', top: ((h - ch) / 2) + 'px' });
       window.setFrameSize(Math.round(cw * scale), Math.round(ch * scale)); $('hq').classList.toggle('on', scale > 1.01); dirty = true; }
     addEventListener('resize', fit); fit();
