@@ -846,7 +846,7 @@ const INFO = {
   clock: { ar: 'الساعة', d: 'ساعة كروت بتتقلب كل دقيقة. لما الساعة تبقى 11:11 الجهاز كله بينوّر. دوس WISH والكروت تقلب لحد 11:11، واتمنّى.', i: 'LOCAL TIME', o: '11:11' },
   piano: { ar: 'بيانو 8-BIT', d: 'أوكتاف كامل تعزف عليه بالماوس أو اللمس، واسحب على المفاتيح عشان تعمل glissando. وعلى الكيبورد A W S E D F T G Y H U J K. نوبة WAVE بتغيّر الصوت: square وtriangle وsaw وsine.', i: 'KEYS · TOUCH', o: 'SOUND' },
   vox: { ar: 'مسجّل الصوت', d: 'ريكوردر بكرتين زي بتوع الاستوديو. دوس REC واتكلم لحد 8 ثواني، وأول ما توقف هيرجعلك صوتك بالصوت اللي اخترته من زراير VOICE: عادي، أو تريلر فيلم، أو روبوت، أو راديو، أو تشيبمنك. غيّر الصوت وهو شغال، وفيدر SPEED بيسرّع ويبطّأ الشريط. صوتك بيفضل في المتصفح بتاعك بس، مش بيتسجّل ولا بيترفع في أي حتة.', i: 'MIC', o: 'MASTER' },
-  stage: { ar: 'مسرح الإيفنت', d: 'ديسك تحكم في شو حقيقي على مسرح صغير: شاشة LED، و6 موفينج هيدز، وجمهور. المسرح بيرقص على أي مزيكا شغالة في الجهاز (DISC أو RADIO أو البيانو أو صوتك من VOX). الفيدرز: LIGHT لقوة الإضاءة، وMOVE لسرعة الحركة، وCOLOR للون. زراير الـ CUE بتغيّر شكل الشو: SWEEP وFAN وCHASE وSTROBE. وGO بيطلق البايرو، ولو مفيش مزيكا بيشغّل DISC ويبدأ الشو.', i: 'MASTER AUDIO', o: 'SHOW' },
+  stage: { ar: 'مسرح الإيفنت', d: 'ديسك تحكم في شو حقيقي على مسرح صغير: شاشة LED، و6 موفينج هيدز، وجمهور. المسرح بيرقص على أي مزيكا شغالة في الجهاز (DISC أو RADIO أو البيانو أو صوتك من VOX). الفيدرز: LIGHT لقوة الإضاءة، وMOVE لسرعة الحركة، وCOLOR للون. زراير الـ CUE بتغيّر شكل الشو: SWEEP وFAN وCHASE وSTROBE. وGO بيطلق البايرو، ولو مفيش مزيكا بيشغّل DISC ويبدأ الشو. وتقدر تلعب في المسرح نفسه: اسحب صباعك عليه والإضاءة كلها تتجمع مكان ما بتشاور، ودوس على أي كشاف يفلّش، ودوس على الجمهور يعمل موجة ويسقف، ودوس على شاشة الـ LED تغيّر شكلها.', i: 'MASTER AUDIO', o: 'SHOW' },
   date: { ar: 'التاريخ', d: 'تقويم دائم ببكرات حقيقية: الشهر، واليوم، وأيام الأسبوع. لف أي بكرة بصباعك، وبعد شوية بترجع للنهارده لوحدها، أو دوس على المقبض النحاسي.', i: 'TODAY', o: 'DRUMS' },
 };
 const ORDER = ['hero', 'pixel', 'cd', 'stack', 'status', 'clock', 'date', 'piano', 'radio', 'vox', 'stage'];
@@ -1415,6 +1415,15 @@ function voxPlay() {
 /* ---------- 10 STAGE 2x2 — L2: a show-control desk with its own miniature stage; the show runs on whatever the device is playing ---------- */
 const STG = { cue: 0, dim: .8, move: .45, hue: 0, beat: 0, kick: 0, avg: 0, lastBeat: -9, bpm: 0, beats: [], phase: 0, live: false, flash: 0, pyroT: -9 };
 const CUES = ['SWEEP', 'FAN', 'CHASE', 'STROBE'];
+Object.assign(STG, { aim: null, aimT: -9, aimHeld: false, bump: new Float32Array(6), waveT: -9, wall: 0 });
+const WALLS = ['AUTO', 'BARS', '11:11', 'CAM'];
+function stageCheer(n = 140, len = 2.2) { // applause: a few hundred short claps, a couple of whistles on top
+  if (!ensureAC() || muted) return; const sr = AC.sampleRate, b = AC.createBuffer(1, Math.round(sr * len), sr), d = b.getChannelData(0);
+  for (let k = 0; k < n; k++) { const at = Math.floor(Math.pow(Math.random(), 1.6) * (len - .1) * sr), a = .35 + Math.random() * .65, w = sr * (.002 + Math.random() * .003); for (let j = 0; j < sr * .02 && at + j < d.length; j++) d[at + j] += (Math.random() * 2 - 1) * a * Math.exp(-j / w); }
+  for (let i = 0; i < d.length; i++) d[i] *= Math.min(1, i / (sr * .08)) * Math.pow(1 - i / d.length, 1.4);
+  const t = AC.currentTime, src = AC.createBufferSource(), hp = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = b; hp.type = 'highpass'; hp.frequency.value = 700; g.gain.value = .55; src.connect(hp); hp.connect(g); g.connect(OUT()); src.start(t);
+  [.15, .55].forEach(dl => { const o = AC.createOscillator(), og = AC.createGain(), t0 = t + dl + Math.random() * .3; o.type = 'sine'; o.frequency.setValueAtTime(1500, t0); o.frequency.exponentialRampToValueAtTime(2900, t0 + .18); o.frequency.exponentialRampToValueAtTime(2100, t0 + .5); og.gain.setValueAtTime(.0001, t0); og.gain.exponentialRampToValueAtTime(.05, t0 + .05); og.gain.exponentialRampToValueAtTime(.0001, t0 + .55); o.connect(og); og.connect(OUT()); o.start(t0); o.stop(t0 + .6); });
+}
 const STAGE_COLS = [0xFF5A1F, 0xFFB347, 0xF4F2EC, 0x2EC4B6, 0x7A5CFF, 0xFF2E7E].map(c => new THREE.Color(c));
 const stageCol = (v, out) => { const f = clamp(v) * (STAGE_COLS.length - 1), i = Math.min(STAGE_COLS.length - 2, Math.floor(f)); return out.copy(STAGE_COLS[i]).lerp(STAGE_COLS[i + 1], f - i); };
 function stageGo() {
@@ -1437,12 +1446,18 @@ function stageGo() {
   const deckM = new THREE.MeshPhysicalMaterial({ color: 0x0f0f12, roughness: .2, clearcoat: 1, clearcoatRoughness: .08 });
   const plat = new THREE.Mesh(new RoundedBoxGeometry(1.52, .05, .6, 3, .012), deckM); plat.position.set(0, D0 + .025, -.52); plat.castShadow = plat.receiveShadow = true; m.inner.add(plat);
   const lipM = new THREE.MeshBasicMaterial({ color: 0x331208 }); { const lip = new THREE.Mesh(new THREE.BoxGeometry(1.5, .012, .008), lipM); lip.position.set(0, D0 + .036, -.219); m.inner.add(lip); }
+  // --- touch the stage: drag on it and every head converges where you point · tap a fixture to bump it · tap the crowd for a wave · tap the wall to change its look
+  const aimAt = e => { const p = planeHit(e, m.group.position.y + Y0 + .06); if (!p) return; const l = m.inner.worldToLocal(p); STG.aim = { x: clamp(l.x, -1.1, 1.1), z: clamp(l.z, -1.2, .5) }; STG.aimT = S.now; };
+  const aimCtrl = { type: 'aim', start(e) { STG.aimHeld = true; aimAt(e); beep(440, .02, 'square', .02); }, move(e) { if (STG.aimHeld) aimAt(e); }, end() { STG.aimHeld = false; STG.aimT = S.now; } };
+  reg(floorM, aimCtrl); reg(plat, aimCtrl);
+  const wallCtrl = { type: 'key', start() { STG.wall = (STG.wall + 1) % WALLS.length; beep(660 + STG.wall * 90, .03); log('STAGE: WALL ' + WALLS[STG.wall]); }, move() { }, end() { } };
+  const crowdCtrl = { type: 'key', start() { if (S.now - STG.waveT < .8) return; STG.waveT = S.now; stageCheer(); log('STAGE: THE CROWD GOES WILD'); }, move() { }, end() { } };
   // --- LED wall, raked back toward the house
   const WC = document.createElement('canvas'); WC.width = 192; WC.height = 64; const wx = WC.getContext('2d'); wx.imageSmoothingEnabled = false;
   const WT = new THREE.CanvasTexture(WC); WT.colorSpace = THREE.SRGBColorSpace; WT.magFilter = THREE.NearestFilter; WT.minFilter = THREE.LinearFilter; WT.generateMipmaps = false;
   const wallM = new THREE.MeshBasicMaterial({ map: WT }); wallM.color.setScalar(1.25);
   const wall = new THREE.Group(); wall.position.set(0, Y0, -.74); wall.rotation.x = -.95; m.inner.add(wall);
-  { const sc = new THREE.Mesh(new THREE.PlaneGeometry(1.26, .42), wallM); sc.position.y = .225; sc.scale.y = .72; sc.position.y = .17; sc.userData.cannotReceiveAO = true; wall.add(sc);
+  { const sc = new THREE.Mesh(new THREE.PlaneGeometry(1.26, .42), wallM); sc.position.y = .225; sc.scale.y = .72; sc.position.y = .17; sc.userData.cannotReceiveAO = true; wall.add(sc); reg(sc, wallCtrl);
     const fr = (w, h, x, y) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, .03), MAT.capD); b.position.set(x, y, -.016); b.castShadow = true; wall.add(b); }; fr(1.32, .03, 0, .336); fr(1.32, .03, 0, .005); fr(.03, .36, -.645, .17); fr(.03, .36, .645, .17);
     [-.5, 0, .5].forEach(x => { const leg = new THREE.Mesh(new THREE.BoxGeometry(.02, .02, .2), MAT.capD); leg.position.set(x, .05, -.11); leg.rotation.x = .9; wall.add(leg); }); }
   // --- moving heads: base, yoke that pans, head that tilts, a lens and a beam
@@ -1455,6 +1470,7 @@ function stageGo() {
     [-1, 1].forEach(sg => { const arm = new THREE.Mesh(new THREE.BoxGeometry(.012, .075, .03), MAT.capD); arm.position.set(sg * .042, .037, 0); arm.castShadow = true; yoke.add(arm); });
     const hd = new THREE.Group(); hd.position.y = .062; yoke.add(hd);
     const body = new THREE.Mesh(new THREE.CylinderGeometry(.032, .028, .075, 20), MAT.blackKey); body.castShadow = true; hd.add(body);
+    const bumpCtrl = { type: 'key', start() { STG.bump[i] = 1; beep(880 + i * 110, .05, 'square', .03); }, move() { }, end() { } }; reg(body, bumpCtrl); reg(base, bumpCtrl); yoke.traverse(o => { if (o.isMesh && !o.userData.ctrl) reg(o, bumpCtrl); });
     const lensM = new THREE.MeshBasicMaterial({ color: 0x111111 }), lens = new THREE.Mesh(new THREE.CircleGeometry(.024, 24), lensM); lens.rotation.x = -Math.PI / 2; lens.position.y = .0385; hd.add(lens);
     const beamM = new THREE.MeshBasicMaterial({ map: gradT, color: 0x000000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const beam = new THREE.Mesh(beamGeo, beamM); beam.userData.noAO = true; beam.renderOrder = 5; hd.add(beam);
@@ -1466,7 +1482,8 @@ function stageGo() {
     const b = new THREE.Mesh(new THREE.CapsuleGeometry(.03, .03, 4, 10), crowdM); b.scale.x = 1.35; b.position.y = .046; b.castShadow = true; g.add(b);
     const h = new THREE.Mesh(new THREE.SphereGeometry(.022, 12, 8), crowdM); h.position.y = .1; h.castShadow = true; g.add(h);
     const ph = new THREE.Mesh(new THREE.BoxGeometry(.008, .014, .004), phoneM); ph.position.set(.03, .14, 0); ph.visible = false; g.add(ph);
-    crowd.push({ g, ph, off: hash(k * 9.1) * 6.28, amp: .6 + hash(k * 5.3) * .6, phone: hash(k * 2.9) > .62 }); }
+    reg(b, crowdCtrl); reg(h, crowdCtrl);
+    crowd.push({ g, x, ph, off: hash(k * 9.1) * 6.28, amp: .6 + hash(k * 5.3) * .6, phone: hash(k * 2.9) > .62 }); }
   // --- pyro: two spark fountains at the downstage corners
   const NP = 140, pPos = new Float32Array(NP * 3), pVel = new Float32Array(NP * 3), pT = new Float32Array(NP).fill(-9), pLife = new Float32Array(NP);
   const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
@@ -1488,13 +1505,17 @@ function stageGo() {
       else if (cue === 1) { pan = u * 1.05 * (.45 + .55 * Math.sin(ph * .8)); tilt = .85 + .1 * Math.cos(ph); }
       else if (cue === 2) { pan = u * .5 + .15 * Math.sin(ph + i); tilt = .85; I = (STG.beat % NH === i ? 1 : .1) * (STG.live ? 1 : .7); }
       else { pan = u * .8; tilt = .75 + .2 * STG.kick; I = strobeOn ? 1.15 : .05; }
+      const manual = STG.aim && (STG.aimHeld || t - STG.aimT < 1.6);
+      if (manual) { const hx = -.6 + i * .24, dx = STG.aim.x + u * .12 - hx, dy = Y0 + .42 - (Y0 + .092), dz = STG.aim.z - (-.68); pan = Math.atan2(dx, dz); tilt = Math.atan2(Math.hypot(dx, dz), dy); I = Math.max(I, STG.aimHeld ? .95 : .7);
+        if (Math.abs(pan - H.pan) > Math.PI) H.pan += Math.sign(pan - H.pan) * Math.PI * 2; } // take the short way round
+      STG.bump[i] = Math.max(0, STG.bump[i] - dt * 2.6); I = Math.max(I, STG.bump[i] * 1.4);
       I = I * STG.dim + STG.flash * .8;
-      H.pan += (pan - H.pan) * Math.min(1, dt * 5); H.tilt += (tilt - H.tilt) * Math.min(1, dt * 5); H.I += (I - H.I) * Math.min(1, dt * (cue === 3 ? 40 : 12));
+      const sp = manual ? 9 : 5; H.pan += (pan - H.pan) * Math.min(1, dt * sp); H.tilt += (tilt - H.tilt) * Math.min(1, dt * sp); H.I += (I - H.I) * Math.min(1, dt * (cue === 3 ? 40 : 12));
       H.yoke.rotation.y = H.pan; H.hd.rotation.x = H.tilt;
-      stageCol(STG.hue + (cue === 1 && i % 2 ? .2 : 0), H.col); if (STG.flash > .3) H.col.lerp(tmpC.setRGB(1, 1, 1), STG.flash);
+      stageCol(STG.hue + (cue === 1 && i % 2 ? .2 : 0), H.col); if (STG.flash > .3) H.col.lerp(tmpC.setRGB(1, 1, 1), STG.flash); if (STG.bump[i] > .05) H.col.lerp(tmpC.setRGB(1, 1, 1), STG.bump[i] * .7);
       H.beamM.color.copy(H.col).multiplyScalar(H.I * .5); H.lensM.color.copy(H.col).multiplyScalar(.15 + H.I * 3.2); });
     stageCol(STG.hue, tmpC2); crowdM.emissive.copy(tmpC2).multiplyScalar(.05 + STG.dim * (STG.live ? .1 + .25 * STG.kick : .05) + STG.flash * .4); lipM.color.copy(tmpC2).multiplyScalar(.25 + STG.dim * (STG.live ? .6 + 1.2 * STG.kick : .3));
-    crowd.forEach(C => { const jump = Math.max(0, 1 - (t - STG.pyroT) * 1.4), bob = STG.live ? Math.abs(Math.sin(ph * 1.2 + C.off)) * .012 * C.amp * (.5 + STG.kick) : 0; C.g.position.y = D0 + .004 + bob + jump * Math.abs(Math.sin((t - STG.pyroT) * 9 + C.off)) * .03; C.ph.visible = C.phone && STG.dim < .35; });
+    crowd.forEach(C => { const jump = Math.max(0, 1 - (t - STG.pyroT) * 1.4), bob = STG.live ? Math.abs(Math.sin(ph * 1.2 + C.off)) * .012 * C.amp * (.5 + STG.kick) : 0; const wv = t - STG.waveT - (C.x + .8) * .32, wave = wv > 0 && wv < .42 ? Math.sin(wv / .42 * Math.PI) : 0; C.g.position.y = D0 + .004 + bob + jump * Math.abs(Math.sin((t - STG.pyroT) * 9 + C.off)) * .03 + wave * .045; C.ph.visible = (C.phone && STG.dim < .35) || wave > .2; });
     // pyro: arm on GO, fire a stream of sparks for a second, gravity does the rest
     if (STG.pyroT !== pyroArmed) { pyroArmed = STG.pyroT; for (let i = 0; i < NP; i++) { const sx = i % 2 ? .72 : -.72; pT[i] = t + (i / NP) * 1.1; pLife[i] = .7 + hash(i * 1.3 + t) * .6; pPos[i * 3] = sx; pPos[i * 3 + 1] = -5; pPos[i * 3 + 2] = -.24; pVel[i * 3] = (hash(i * 7.7 + t) - .5) * .35 - sx * .12; pVel[i * 3 + 1] = 1.3 + hash(i * 3.3 + t) * .9; pVel[i * 3 + 2] = (hash(i * 5.1 + t) - .5) * .3 + .12; } }
     let anyP = false; for (let i = 0; i < NP; i++) { const age = t - pT[i]; if (age < 0 || age > pLife[i]) { pPos[i * 3 + 1] = -5; continue; } anyP = true;
@@ -1504,16 +1525,22 @@ function stageGo() {
     m.cueKeys.forEach((k, i) => k.on = i === cue); m.led_.set(STG.live ? STG.kick > .5 : Math.floor(t * 1.5) % 2 === 0); m.active = STG.live || anyP;
   });
   m.draw = t => { const s = m.scr; s.clear(0);
-    s.text(String(STG.cue + 1), 1, 1, 3); s.text(CUES[STG.cue], 7, 1, 1);
+    const man = STG.aim && (STG.aimHeld || t - STG.aimT < 1.6); if (man) { s.text('AIM', 1, 1, 3); s.text('HAND', 15, 1, 1); } else { s.text(String(STG.cue + 1), 1, 1, 3); s.text(CUES[STG.cue], 7, 1, 1); }
     for (let k = 0; k < 4; k++) s.rect(k * 8, 7, 7, 1, STG.beat % 4 === k ? 3 : 6); // the bar: four beats, the current one lit
     if (t - STG.pyroT < 1.4) { if (Math.floor(t * 6) % 2) s.text('PYRO', 1, 8, 3); } else s.text(STG.live ? (STG.bpm ? 'BPM ' + STG.bpm : 'LIVE') : 'IDLE', 1, 8, STG.live ? 1 : 2);
     s.render();
     // LED wall: 192x64 pixels
     const c = wx, W = 192, H = 64; c.fillStyle = '#000'; c.fillRect(0, 0, W, H); stageCol(STG.hue, tmpC); const hex = '#' + tmpC.getHexString();
     if (t - STG.pyroT < 1.6) { const k = 1 - (t - STG.pyroT) / 1.6; c.fillStyle = `rgba(255,255,255,${k * k})`; c.fillRect(0, 0, W, H); drawPixelText(c, '11:11', W / 2, 14, 7, k > .5 ? '#141414' : OR, 'center'); }
-    else if (STG.live) { const B = MASTER.bars; for (let i = 0; i < 24; i++) { const h = Math.round(clamp(B[i] * 1.15) * 56), x = i * 8; for (let y = 0; y < h; y += 3) { c.fillStyle = y > 44 ? '#F4F2EC' : hex; c.fillRect(x + 1, H - 4 - y, 6, 2); } }
+    else if (STG.wall === 2) { const k = .55 + .45 * STG.kick; c.fillStyle = hex; c.globalAlpha = .22; for (let y = (t * 30) % 8 - 8; y < H; y += 8) c.fillRect(0, y, W, 2); c.globalAlpha = 1; const pz = 6 + Math.round(k * 2), ty = 32 - 2.5 * pz; drawPixelText(c, '11:11', W / 2 + 2, ty + 2, pz, '#000', 'center'); drawPixelText(c, '11:11', W / 2, ty, pz, k > .9 ? '#F4F2EC' : OR, 'center'); }
+    else if (STG.wall === 3) { // CAM: the crowd seen from the stage, lit by the beams
+      { const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#000'); g.addColorStop(1, `rgb(${Math.round(tmpC.r * 120)},${Math.round(tmpC.g * 120)},${Math.round(tmpC.b * 120)})`); c.fillStyle = g; c.fillRect(0, 0, W, H); } // haze, back-lit by the stage
+      heads.forEach(Hd => { const x = W / 2 + Math.sin(Hd.pan) * 120, a = clamp(Hd.I * .8); c.fillStyle = `rgba(${Math.round(Hd.col.r * 255)},${Math.round(Hd.col.g * 255)},${Math.round(Hd.col.b * 255)},${a * .55})`; c.beginPath(); c.moveTo(x - 6, 0); c.lineTo(x + 6, 0); c.lineTo(x + 30, H); c.lineTo(x - 30, H); c.fill(); });
+      crowd.forEach((C, k) => { const x = W / 2 + C.x * 112, y = (k < 10 ? 46 : 54) - (C.g.position.y - D0) * 260; c.fillStyle = '#0a0a0c'; c.fillRect(Math.round(x - 6), Math.round(y), 12, 20); c.fillRect(Math.round(x - 3), Math.round(y - 7), 6, 6); if (C.ph.visible) { c.fillStyle = '#fff'; c.fillRect(Math.round(x + 5), Math.round(y - 12), 2, 3); } });
+      if (Math.floor(t * 2) % 2) { c.fillStyle = '#ff2a2a'; c.fillRect(6, 6, 4, 4); } drawPixelText(c, 'LIVE', 14, 6, 1, '#F4F2EC'); }
+    else if (STG.live || STG.wall === 1) { const B = MASTER.bars; for (let i = 0; i < 24; i++) { const h = Math.round(clamp(B[i] * 1.15) * 56), x = i * 8; for (let y = 0; y < h; y += 3) { c.fillStyle = y > 44 ? '#F4F2EC' : hex; c.fillRect(x + 1, H - 4 - y, 6, 2); } }
       if (STG.cue === 3 && t - STG.lastBeat < .07) { c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); }
-      if (STG.beat % 8 < 2) drawPixelText(c, 'ELEVEN11', W / 2, 6, 3, '#F4F2EC', 'center'); }
+      if (STG.beat % 8 < 2 && STG.wall === 0) drawPixelText(c, 'ELEVEN11', W / 2, 6, 3, '#F4F2EC', 'center'); }
     else { const msg = 'ELEVEN11 · LIVE EVENTS · PRESS GO', mw = msg.length * 16; drawPixelText(c, msg, W - (t * 46) % (mw + W), 22, 4, hex, 'left'); }
     WT.needsUpdate = true; };
 }
