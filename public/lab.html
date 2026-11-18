@@ -17,7 +17,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://eleven11ai.com/og.png">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%23FF5A1F'/%3E%3Cg fill='%23141414'%3E%3Crect x='6' y='12' width='4' height='24'/%3E%3Crect x='14' y='12' width='4' height='24'/%3E%3Crect x='22' y='18' width='4' height='4'/%3E%3Crect x='22' y='26' width='4' height='4'/%3E%3Crect x='30' y='12' width='4' height='24'/%3E%3Crect x='38' y='12' width='4' height='24'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Crect%20width='48'%20height='48'%20rx='9'%20fill='%231F1F1F'/%3E%3Cg%20transform='translate(4%2011.65)%20scale(.5882)'%3E%3Cpath%20fill='%23EEEBE5'%20fill-rule='evenodd'%20d='M34%2042H68V8H34V0H0V34H34ZM63%2037H39V13H63ZM15.35%2026H9.65V8H15.35ZM24.35%2026H18.65V8H24.35ZM36%2016V20H32V16ZM36%2022V26H32V22ZM43.5%2016V34H49.5V16ZM52.5%2016V34H58.5V16Z'/%3E%3Cpath%20fill='%23FF5A1F'%20d='M32%2016V20H36V16ZM32%2022V26H36V22Z'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Barlow+Condensed:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -31,7 +31,7 @@ body.dark{background:#0d0d0f}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #boot{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#121214;color:#EDEBE6;transition:opacity .6s ease .1s,visibility 0s linear .7s}
 #boot.done{opacity:0;visibility:hidden;pointer-events:none}
-#boot svg{width:120px;height:54px;fill:#EDEBE6;overflow:visible}
+#boot svg{width:120px;height:74px;fill:#EDEBE6;overflow:visible;animation:bdrop .55s cubic-bezier(.3,1.6,.5,1) both}#boot svg .c{fill:#FF5A1F;animation:bblink 1.6s steps(1) infinite}@keyframes bblink{50%{opacity:.12}}
 #boot svg rect{animation:bdrop .55s cubic-bezier(.3,1.6,.5,1) both}
 #boot svg rect:nth-child(2){animation-delay:.12s}#boot svg rect:nth-child(3),#boot svg rect:nth-child(4){animation-delay:.5s;fill:#FF5A1F}#boot svg rect:nth-child(5){animation-delay:.24s}#boot svg rect:nth-child(6){animation-delay:.36s}
 @keyframes bdrop{from{transform:translateY(-40px);opacity:0}to{transform:none;opacity:1}}
@@ -92,7 +92,7 @@ body.dark .seg button.on{color:#141414}
 </head>
 <body class="dark">
 <div id="boot" role="status" aria-live="polite">
-  <svg viewBox="0 0 44 20" aria-hidden="true"><rect x="0" y="0" width="4" height="20"/><rect x="8" y="0" width="4" height="20"/><rect x="20" y="4" width="4" height="4"/><rect x="20" y="12" width="4" height="4"/><rect x="32" y="0" width="4" height="20"/><rect x="40" y="0" width="4" height="20"/></svg>
+  <svg viewBox="0 0 68 42" aria-hidden="true"><path fill-rule="evenodd" d="M34 42H68V8H34V0H0V34H34ZM63 37H39V13H63ZM15.35 26H9.65V8H15.35ZM24.35 26H18.65V8H24.35ZM36 16V20H32V16ZM36 22V26H32V22ZM43.5 16V34H49.5V16ZM52.5 16V34H58.5V16Z"/><path class="c" d="M32 16V20H36V16ZM32 22V26H36V22Z"/></svg>
   <div class="bar"><i></i></div>
   <p>BOOTING DEVICES</p>
   <div class="fb">TAKING LONGER THAN USUAL.<br>THIS PAGE NEEDS WEBGL — TRY CHROME OR SAFARI.</div>
@@ -107,7 +107,7 @@ body.dark .seg button.on{color:#141414}
 <div id="app"></div>
 <div id="tl" class="hud">
   <div class="brand"><svg viewBox="0 0 44 20"><rect x="0" y="0" width="4" height="20"/><rect x="8" y="0" width="4" height="20"/><rect x="20" y="4" width="4" height="4"/><rect x="20" y="12" width="4" height="4"/><rect x="32" y="0" width="4" height="20"/><rect x="40" y="0" width="4" height="20"/></svg><b>ELEVEN11</b></div>
-  <div class="sub" id="sub">AI STUDIO SOLUTIONS</div>
+  <div class="sub" id="sub">AI SOLUTIONS STUDIO</div>
 </div>
 <div id="tr" class="hud">
   <div class="seg" id="seg"><span>GRID</span><button data-l="auto" class="on">AUTO</button><button data-l="7">7</button><button data-l="4">4</button><button data-l="2">2</button></div>
@@ -1890,6 +1890,58 @@ function activeSwap(c) { active = c; }
 /* ---------- strips + blank slot covers (rebuilt per layout) ---------- */
 let panels = [];
 let UI = {};
+const E11LOGO = {"icon":[{"d":"M34.00 42.00L68.00 42.00L68.00 8.00L34.00 8.00L34.00 0.00L0.00 0.00L0.00 34.00L34.00 34.00L34.00 42.00ZM63.00 37.00L39.00 37.00L39.00 13.00L63.00 13.00L63.00 37.00ZM15.35 26.00L9.65 26.00L9.65 8.00L15.35 8.00L15.35 26.00ZM24.35 26.00L18.65 26.00L18.65 8.00L24.35 8.00L24.35 26.00ZM36.00 16.00L36.00 20.00L32.00 20.00L32.00 16.00L36.00 16.00ZM36.00 22.00L36.00 26.00L32.00 26.00L32.00 22.00L36.00 22.00ZM43.50 16.00L43.50 34.00L49.50 34.00L49.50 16.00L43.50 16.00ZM52.50 16.00L52.50 34.00L58.50 34.00L58.50 16.00L52.50 16.00Z","c":"D","e":1},{"d":"M15.35 26.00L15.35 8.00L9.65 8.00L9.65 26.00L15.35 26.00ZM24.35 26.00L24.35 8.00L18.65 8.00L18.65 26.00L24.35 26.00ZM36.00 20.00L36.00 16.00L32.00 16.00L32.00 20.00L36.00 20.00ZM36.00 22.00L32.00 22.00L32.00 26.00L36.00 26.00L36.00 22.00ZM63.00 13.00L39.00 13.00L39.00 37.00L63.00 37.00L63.00 13.00ZM43.50 16.00L49.50 16.00L49.50 34.00L43.50 34.00L43.50 16.00ZM52.50 16.00L58.50 16.00L58.50 34.00L52.50 34.00L52.50 16.00Z","c":"L","e":1},{"d":"M32.00 16.00L32.00 20.00L36.00 20.00L36.00 16.00L32.00 16.00ZM32.00 22.00L32.00 26.00L36.00 26.00L36.00 22.00L32.00 22.00Z","c":"O"}],"lock":[{"d":"M0.0 0.0H118.6V34.0H0.0Z","c":"D"},{"d":"M256 -64V0H64V-64ZM64 -64H0V-256H64V-192H256V-256H320V-128H64ZM256 -256H64V-320H256Z","c":"L","t":[8.0,26.0,0.04688]},{"d":"M0 0V-64H64V-384H0V-448H128V-64H192V0Z","c":"L","t":[26.0,26.0,0.04688]},{"d":"M256 -64V0H64V-64ZM64 -64H0V-256H64V-192H256V-256H320V-128H64ZM256 -256H64V-320H256Z","c":"L","t":[38.0,26.0,0.04688]},{"d":"M128 0V-128H192V0ZM192 -128V-320H320V-256H256V-128ZM128 -128H64V-256H0V-320H128Z","c":"L","t":[56.0,26.0,0.04688]},{"d":"M256 -64V0H64V-64ZM64 -64H0V-256H64V-192H256V-256H320V-128H64ZM256 -256H64V-320H256Z","c":"L","t":[74.0,26.0,0.04688]},{"d":"M192 0V-64H256V-256H320V-64H384V0ZM0 0V-64H64V-256H0V-320H128V-256H192V-192H128V0ZM192 -256V-320H256V-256Z","c":"L","t":[92.0,26.0,0.04688]},{"d":"M133.50 34.00L133.50 16.00L127.50 16.00L127.50 34.00L133.50 34.00ZM152.00 8.00L118.00 8.00L118.00 16.00L120.00 16.00L120.00 20.00L118.00 20.00L118.00 22.00L120.00 22.00L120.00 26.00L118.00 26.00L118.00 42.00L152.00 42.00L152.00 8.00ZM147.00 13.00L147.00 37.00L123.00 37.00L123.00 13.00L147.00 13.00ZM142.50 16.00L136.50 16.00L136.50 34.00L142.50 34.00L142.50 16.00Z","c":"D","e":1},{"d":"M116.00 16.00L116.00 20.00L120.00 20.00L120.00 16.00L116.00 16.00ZM116.00 22.00L116.00 26.00L120.00 26.00L120.00 22.00L116.00 22.00Z","c":"L"},{"d":"M116.00 16.00L116.00 20.00L120.00 20.00L120.00 16.00L116.00 16.00ZM116.00 22.00L116.00 26.00L120.00 26.00L120.00 22.00L116.00 22.00Z","c":"O"},{"d":"M0.00 34.00L0.00 67.15L30.35 67.15L30.35 34.00L27.15 34.00L27.15 63.96L3.19 63.96L3.19 34.00L0.00 34.00Z","c":"D"},{"d":"M256 0V-64H320V-128H128V-64H192V0H0V-64H64V-192H128V-384H192V-192H256V-384H320V-192H384V-64H448V0ZM192 -384V-448H256V-384Z","c":"D","t":[6.389,56.167,0.02496]},{"d":"M0 0V-64H64V-384H0V-448H192V-384H128V-64H192V0Z","c":"D","t":[19.167,56.167,0.02496]},{"d":"M256 -64V0H0V-64ZM256 -64V-128H320V-64ZM256 -128H64V-192H256ZM64 -192H0V-256H64ZM256 -320V-256H64V-320Z","c":"D","t":[35.139,48.181,0.02496]},{"d":"M256 -64V0H64V-64ZM256 -64V-256H320V-64ZM64 -64H0V-256H64ZM256 -256H64V-320H256Z","c":"D","t":[44.722,48.181,0.02496]},{"d":"M0 0V-64H64V-384H0V-448H128V-64H192V0Z","c":"D","t":[54.306,48.181,0.02496]},{"d":"M192 -64V-128H256V-256H192V-320H384V-256H320V-64H384V0H256V-64ZM192 -64V0H64V-256H0V-320H128V-64Z","c":"D","t":[60.694,48.181,0.02496]},{"d":"M256 -64V0H128V-64ZM128 -64H64V-256H0V-320H64V-448H128V-320H256V-256H128Z","c":"D","t":[71.875,48.181,0.02496]},{"d":"M64 -384V-448H128V-384ZM0 0V-64H64V-256H0V-320H128V-64H192V0Z","c":"D","t":[79.861,48.181,0.02496]},{"d":"M256 -64V0H64V-64ZM256 -64V-256H320V-64ZM64 -64H0V-256H64ZM256 -256H64V-320H256Z","c":"D","t":[86.25,48.181,0.02496]},{"d":"M192 0V-64H256V-256H320V-64H384V0ZM0 0V-64H64V-256H0V-320H128V-256H192V-192H128V0ZM192 -256V-320H256V-256Z","c":"D","t":[95.833,48.181,0.02496]},{"d":"M256 -64V0H0V-64ZM256 -64V-128H320V-64ZM256 -128H64V-192H256ZM64 -192H0V-256H64ZM256 -320V-256H64V-320Z","c":"D","t":[107.014,48.181,0.02496]},{"d":"M256 -64V0H0V-64ZM256 -64V-128H320V-64ZM256 -128H64V-192H256ZM64 -192H0V-256H64ZM256 -320V-256H64V-320Z","c":"D","t":[35.139,64.153,0.02496]},{"d":"M256 -64V0H128V-64ZM128 -64H64V-256H0V-320H64V-448H128V-320H256V-256H128Z","c":"D","t":[44.722,64.153,0.02496]},{"d":"M192 -64V-128H256V-256H192V-320H384V-256H320V-64H384V0H256V-64ZM192 -64V0H64V-256H0V-320H128V-64Z","c":"D","t":[52.708,64.153,0.02496]},{"d":"M192 -64V-128H256V-192H192V-256H256V-384H192V-448H320V-64H384V0H256V-64ZM64 -64H0V-256H64ZM192 -256H64V-320H192ZM192 -64V0H64V-64Z","c":"D","t":[63.889,64.153,0.02496]},{"d":"M64 -384V-448H128V-384ZM0 0V-64H64V-256H0V-320H128V-64H192V0Z","c":"D","t":[75.069,64.153,0.02496]},{"d":"M256 -64V0H64V-64ZM256 -64V-256H320V-64ZM64 -64H0V-256H64ZM256 -256H64V-320H256Z","c":"D","t":[81.458,64.153,0.02496]}],"form":"M120.0 300.0L120.0 360.0L120.0 420.0L180.0 420.0L180.0 480.0L240.0 480.0L240.0 540.0L240.0 600.0L300.0 600.0L360.0 600.0L420.0 600.0L420.0 540.0L480.0 540.0L480.0 600.0L540.0 600.0L600.0 600.0L600.0 540.0L600.0 480.0L660.0 480.0L660.0 420.0L600.0 420.0L600.0 360.0L600.0 300.0L600.0 240.0L600.0 180.0L540.0 180.0L480.0 180.0L420.0 180.0L360.0 180.0L300.0 180.0L300.0 240.0L240.0 240.0L240.0 180.0L180.0 180.0L180.0 240.0L180.0 300.0L120.0 300.0Z","cells":[[0,300],[60,300],[60,360],[60,420],[120,180],[120,240],[120,420],[180,60],[180,120],[180,480],[180,540],[240,180],[240,600],[240,660],[300,120],[300,600],[360,120],[360,600],[420,120],[420,540],[480,120],[480,600],[540,120],[540,600],[600,180],[600,240],[600,300],[600,360],[600,480],[600,540],[600,600],[660,60],[660,420]],"ig":[300,240,3.5294],"lg":[300,416,1.5789]}; // the approved mark, lifted from /brand: icon 11:11, lockup eleven:11 + AI solutions studio, the wish form and its loose cells (cover coords 720x780)
+/* ---------- 11:11 · THE MARK — the approved eleven11 logo as real relief: rasterised from its own vector paths, then meshed into square blocks (the brand is all squares, so blocks are exact) ---------- */
+const E11BOX = { icon: [300, 240, 540, 388.24], lock: [300, 416, 540, 522.03], stack: [300, 240, 540, 522.03], form: [0, 60, 720, 720] };
+const E11MASKS = {};
+function e11Mask(layout, res = 2) {
+  const key = layout + '|' + res; if (E11MASKS[key]) return E11MASKS[key];
+  const [x0, y0, x1, y1] = E11BOX[layout], W = Math.ceil((x1 - x0) * res), H = Math.ceil((y1 - y0) * res);
+  const mk = () => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d', { willReadFrequently: true }); c.setTransform(res, 0, 0, res, -x0 * res, -y0 * res); c.fillStyle = '#fff'; return c; };
+  const R = mk(), C = mk(), Fm = layout === 'form' ? mk() : null;
+  const paint = (items, g) => items.forEach(it => { for (const c of [R, C]) { c.save(); c.translate(g[0], g[1]); c.scale(g[2], g[2]); if (it.t) { c.translate(it.t[0], it.t[1]); c.scale(it.t[2], it.t[2]); } }
+    const p = new Path2D(it.d), rule = it.e ? 'evenodd' : 'nonzero';
+    if (it.c === 'D') R.fill(p, rule); else { R.globalCompositeOperation = 'destination-out'; R.fill(p, rule); if (it.c === 'O') C.fill(p, rule); }
+    R.restore(); C.restore(); });
+  if (layout !== 'lock') paint(E11LOGO.icon, E11LOGO.ig);
+  if (layout !== 'icon') paint(E11LOGO.lock, E11LOGO.lg);
+  if (Fm) { Fm.fill(new Path2D(E11LOGO.form)); E11LOGO.cells.forEach(([x, y]) => Fm.fillRect(x, y, 60, 60)); }
+  const read = c => { if (!c) return null; const d = c.getImageData(0, 0, W, H).data, m = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) m[i] = d[i * 4 + 3] > 127 ? 1 : 0; return m; };
+  return (E11MASKS[key] = { W, H, raise: read(R), colon: read(C), form: read(Fm), box: [x0, y0, x1, y1] });
+}
+function e11Greedy(m, W, H) { // binary grid → as few rectangles as possible
+  const used = new Uint8Array(W * H), out = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; if (!m[i] || used[i]) continue;
+    let w = 1; while (x + w < W && m[i + w] && !used[i + w]) w++;
+    let h = 1; grow: while (y + h < H) { for (let k = 0; k < w; k++) { const j = (y + h) * W + x + k; if (!m[j] || used[j]) break grow; } h++; }
+    for (let yy = 0; yy < h; yy++) used.fill(1, (y + yy) * W + x, (y + yy) * W + x + w); out.push([x, y, w, h]); }
+  return out;
+}
+const E11COLON = new THREE.MeshStandardMaterial({ color: 0xFF5A1F, emissive: 0xFF5A1F, emissiveIntensity: 1.2, roughness: .4 }); // the two dots: the only thing that moves, they blink like a clock
+TICKERS.push((dt, t) => { E11COLON.emissiveIntensity = (t % 1.6) < .8 ? 1.5 : .12; });
+function e11Blocks(rects, cell, ox, oz, y0, h, mat) {
+  if (!rects.length) return null; const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, rects.length), M4 = new THREE.Matrix4(), P = new THREE.Vector3(), Q = new THREE.Quaternion(), S3 = new THREE.Vector3();
+  rects.forEach(([x, y, w, hh], i) => { P.set(ox + (x + w / 2) * cell, y0 + h / 2, oz + (y + hh / 2) * cell); S3.set(w * cell, h, hh * cell); M4.compose(P, Q, S3); im.setMatrixAt(i, M4); });
+  im.castShadow = true; im.receiveShadow = true; return im;
+}
+// layout: 'icon' | 'lock' | 'stack' | 'form' · style: 'raise' (logo stands up), 'carve' (logo cut into a badge), 'pocket' (the wish form sunk into a raised plate, logo standing in it)
+function e11Relief(layout, { width, h = .02, mat = MAT.body, colon = E11COLON, res = 2, style = 'raise', pad = 0, plate = null } = {}) {
+  const M = e11Mask(layout, res), [x0, y0, x1, y1] = M.box, k = width / (x1 - x0), cell = k / res, W = M.W, H = M.H, g = new THREE.Group(), add = o => o && g.add(o), depth = (y1 - y0) * k, ox = -width / 2, oz = -depth / 2;
+  if (style === 'raise') { add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h, mat)); }
+  else if (style === 'carve') { // a badge block with the mark cut into it; the cuts go almost to the floor
+    const pc = Math.round(pad / cell), W2 = W + pc * 2, H2 = H + pc * 2, inv = new Uint8Array(W2 * H2).fill(1);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (M.raise[y * W + x] || M.colon[y * W + x]) inv[(y + pc) * W2 + x + pc] = 0;
+    add(e11Blocks(e11Greedy(inv, W2, H2), cell, ox - pc * cell, oz - pc * cell, 0, h, mat));
+    add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h * .18, mat)); }
+  else if (style === 'pocket') { // plate raised all round, the wish form (and its loose cells) sunk into it, the mark standing in the pocket
+    const inv = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) inv[i] = M.form[i] ? 0 : 1;
+    add(e11Blocks(e11Greedy(inv, W, H), cell, ox, oz, 0, h, mat));
+    add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h * .62, mat));
+    if (plate) { const [pw, pd] = plate, bx = (sx, sz, w, d) => { if (w <= .001 || d <= .001) return; const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); b.position.set(sx + w / 2, h / 2, sz + d / 2); b.castShadow = b.receiveShadow = true; g.add(b); };
+      bx(-pw / 2, -pd / 2, pw, oz + pd / 2); bx(-pw / 2, -oz, pw, pd / 2 + oz); bx(-pw / 2, oz, ox + pw / 2, depth); bx(-ox, oz, pw / 2 + ox, depth); } } // the rest of the plate, out to the edges
+  if (colon) add(e11Blocks(e11Greedy(M.colon, W, H), cell, ox, oz, 0, style === 'carve' ? h * .3 : h * .5, colon));
+  g.userData.size = [width, depth]; return g;
+}
 function printMark(mod, x, z, h) { // the 11:11 mark, printed on the plastic
   const cv = document.createElement('canvas'); cv.width = 220; cv.height = 100; const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   const draw = () => { const c = cv.getContext('2d'); c.clearRect(0, 0, 220, 100); c.fillStyle = THEME.name === 'BLACK' ? '#d8d6d0' : '#2a2a2c'; [0, 40, 160, 200].forEach(x => c.fillRect(x, 0, 20, 100)); c.fillStyle = OR; c.fillRect(100, 20, 20, 20); c.fillRect(100, 60, 20, 20); t.needsUpdate = true; };
@@ -1901,8 +1953,8 @@ const GRID_MODES = ['auto', 7, 4, 2];
 function buildTopBar(F) {
   const T = new Module('stripT', { W: F.st.w, D: F.st.d, panel: true }); const w = F.st.w, narrow = w < 3.1;
   let xl = -w / 2 + .17;
-  const mh = narrow ? .13 : .15; printMark(T, xl, -.02, mh); xl += mh * 2.2 + .14;
-  if (!narrow) { T.label('ELEVEN11', xl, -.045, { size: .019 }); T.label('AI STUDIO SOLUTIONS', xl, .085, { size: .0085 }); xl += 1.3; }
+  { const ih = narrow ? .26 : .3, iw0 = ih * 240 / 148.24, r = e11Relief('icon', { width: iw0, h: .022 }); r.position.set(xl + iw0 / 2, T.th, -.01); T.inner.add(r); xl += iw0 + .14;
+    if (!narrow) { const lw = ih * 240 / 106.03, r2 = e11Relief('lock', { width: lw, h: .022, res: 3 }); r2.position.set(xl + lw / 2, T.th, -.01); T.inner.add(r2); xl += lw + .22; } } // the approved mark, standing up out of the plastic
   let xr = w / 2 - .2; const lab = (str, x) => T.label(str, x, .185, { align: 'center', size: .0082 });
   UI.theme = T.toggle({ x: xr, z: -.03, value: THEME.name === 'BLACK' ? 1 : 0, onChange: v => setTheme(v ? 'black' : 'white') }); lab('DARK', xr); xr -= .3;
   UI.sound = T.toggle({ x: xr, z: -.03, value: muted ? 0 : 1, onChange: v => { muted = !v; if (v) jingle(); log(v ? 'SOUND: ON' : 'SOUND: OFF'); } }); lab('SOUND', xr); xr -= .34;
@@ -1955,11 +2007,11 @@ function buildPanels(L) {
   }
   const B = new Module('stripB', { W: F.sb.w, D: F.sb.d, panel: true });
   const sz = clamp(.026 * F.sb.d / SB, .026, .05), top = F.sb.d > .9;
-  B.label('ELEVEN11', -F.sb.w / 2 + .16, top ? -F.sb.d / 2 + .3 : 0, { size: sz });
+  const lay = top ? 'stack' : 'lock', lh = top ? Math.min(F.sb.d - .44, 1.9) : F.sb.d * .64, lw = lh * 240 / (top ? 282.03 : 106.03);
+  { const r = e11Relief(lay, { width: lw, h: .036, res: 3 }); r.position.set(-F.sb.w / 2 + .22 + lw / 2, B.th, top ? -F.sb.d / 2 + .22 + lh / 2 : 0); B.inner.add(r); }
   const gcols = Math.max(4, Math.min(F.sb.d > .9 ? 46 : 22, Math.floor((F.sb.w - (F.sb.d > .9 ? 3.4 : 1.9)) / .075))), grows = Math.max(5, Math.min(16, Math.floor((F.sb.d - .2) / .075)));
   B.grille({ x0: F.sb.w / 2 - .16 - (gcols - 1) * .075, z0: -(grows - 1) * .075 / 2, cols: gcols, rows: grows, step: .075, r: .02 });
-  if (top) B.label('AI STUDIO SOLUTIONS · ELEVEN11AI.COM', -F.sb.w / 2 + .16, -F.sb.d / 2 + .3 + sz * 4.5 + .12, { size: .0095 });
-  else if (F.sb.w > 3.4) B.label('AI STUDIO SOLUTIONS · ELEVEN11AI.COM', -F.sb.w / 2 + .16 + sz * 36 + .3, .01, { size: .0095 });
+  if (F.sb.w > 2.8) B.label('MAKE A WISH. WE\u2019LL BUILD IT. · ELEVEN11AI.COM', -F.sb.w / 2 + .22 + lw + .3, top ? -F.sb.d / 2 + .22 + lh - .03 : lh / 2 - .03, { size: .0095 });
   B.build(); B.group.position.set(F.sb.cx, 0, F.sb.cz); panels.push(B);
   emptyCells(L).forEach(([c, r], i) => { const P = new Module('slot' + i, { W: U, D: U, panel: true }); P.label('+', 0, -.04, { align: 'center', size: .03 }); P.label('EMPTY SLOT', 0, .14, { align: 'center', size: .0095 }); P.build(); const cr = cellRect(L, c, r, 1, 1); P.group.position.set(cr.cx, 0, cr.cz); panels.push(P); });
   panels.forEach(p => { p.group.visible = true; });
@@ -2084,7 +2136,7 @@ function chooseLayout() { if (layoutMode !== 'auto') return LAYOUTS[layoutMode];
 let lastF = null;
 function applyLayout(next, first = false) {
   const prevL = L, changed = next !== L; ensureAll(next); L = next; const F = dims(L);
-  document.getElementById('sub').textContent = `AI STUDIO SOLUTIONS · GRID ${L.cols}X${L.rows}`;
+  document.getElementById('sub').textContent = `AI SOLUTIONS STUDIO · GRID ${L.cols}X${L.rows}`;
   setSunBounds(F.FW, F.FD);
   Object.values(routes).forEach(r => r.vis = 0);
   if (first) {
@@ -2246,7 +2298,7 @@ function reflow(d0, msg) {
   panels.forEach(p => p.group.visible = false); setSunBounds(F.FW, F.FD);
   ORDER.forEach((id, i) => { const m = modules[id]; if (!L.pos[id]) return; const [c, r] = L.pos[id], cr = cellRect(L, c, r, ...SIZES[id]), p = m.group.position; if (!m.group.visible && !BOOTED) { p.set(cr.cx, m.th, cr.cz); m.group.visible = true; m.flipped = true; m.flipK = 1; m.group.rotation[m.flipAx] = Math.PI; m.wakeAt = 1.4 + BOOT_SEQ.indexOf(id) * .5; m.slowFlip = true; if (m.ring) m.ring.position.set(cr.cx, .004, cr.cz); } else if (!m.group.visible) place(m, cr.cx, cr.cz, .3 + i * .13, true); else if (Math.abs(p.x - cr.cx) > .001 || Math.abs(p.z - cr.cz) > .001 || p.y > .001) place(m, cr.cx, cr.cz, i * .02, false); });
   fitCamera(false); saveLayout(); if (msg) log(msg); updateTray();
-  document.getElementById('sub').textContent = `AI STUDIO SOLUTIONS · GRID ${L.cols}X${L.rows}`;
+  document.getElementById('sub').textContent = `AI SOLUTIONS STUDIO · GRID ${L.cols}X${L.rows}`;
 }
 function saveLayout() { try { localStorage.setItem('e11-layouts-v4', JSON.stringify({ removed: [...REMOVED], layouts: Object.fromEntries(Object.entries(LAYOUTS).map(([k, v]) => [k, { rows: v.rows, pos: v.pos }])) })); } catch (e) { } }
 function loadLayout() { try { const d = JSON.parse(localStorage.getItem('e11-layouts-v4') || 'null'); if (!d) return; (d.removed || []).forEach(id => { if (SIZES[id]) REMOVED.add(id); }); for (const k in d.layouts) if (LAYOUTS[k]) { LAYOUTS[k].rows = d.layouts[k].rows; LAYOUTS[k].pos = d.layouts[k].pos; } } catch (e) { } }
