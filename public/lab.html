@@ -359,7 +359,7 @@ function rrPath(P, cx, cz, w, d, r) {
 }
 const BS = .012, TH = .075;
 // extrude levels: L1 tools · L2 process · L3 hero
-const LV = { clock: .075, date: .075, status: .16, piano: .16, stack: .16, hero: .28, pixel: .28, stripT: .16, cd: .16, radio: .16 };
+const LV = { clock: .075, date: .075, status: .16, piano: .16, stack: .16, hero: .28, pixel: .28, stripT: .16, cd: .16, radio: .16, vox: .16, stage: .16 };
 function tileGeo(w, d, holes = [], r = .055, height = TH) {
   const sh = rrPath(new THREE.Shape(), 0, 0, w - 2 * BS, d - 2 * BS, r - BS);
   for (const h of holes) { const p = new THREE.Path(); if (h.type === 'c') p.absarc(h.x, -h.z, h.r + BS, 0, Math.PI * 2, true); else rrPath(p, h.x, h.z, h.w + 2 * BS, h.d + 2 * BS, (h.r || .02) + BS); sh.holes.push(p); }
@@ -406,11 +406,11 @@ function makeLabel(str, { size = .0115, align = 'left', color = null, bg = null 
    LAYOUT — the bento rules
    ========================================================= */
 const U = 1, G = .08, RIM = .12, SR0 = .44, SB = .56, FT = .32;
-const SIZES = { hero: [2, 2], pixel: [2, 2], stack: [2, 3], status: [2, 1], piano: [2, 1], clock: [1, 1], date: [1, 1], cd: [2, 2], radio: [2, 1] };
+const SIZES = { hero: [2, 2], pixel: [2, 2], stack: [2, 3], status: [2, 1], piano: [2, 1], clock: [1, 1], date: [1, 1], cd: [2, 2], radio: [2, 1], vox: [2, 2] };
 const LAYOUTS = {
-  7: { key: 7, cols: 9, rows: 3, pos: { hero: [0, 0], pixel: [2, 0], cd: [4, 0], clock: [6, 0], date: [6, 1], stack: [7, 0], piano: [0, 2], radio: [2, 2], status: [4, 2] } },
-  4: { key: 4, cols: 4, rows: 7, pos: { hero: [0, 0], pixel: [2, 0], cd: [0, 2], stack: [2, 2], clock: [0, 4], date: [1, 4], piano: [0, 5], radio: [2, 5], status: [0, 6] } },
-  2: { key: 2, cols: 2, rows: 13, pos: { hero: [0, 0], radio: [0, 2], clock: [0, 3], date: [1, 3], cd: [0, 4], pixel: [0, 6], piano: [0, 8], stack: [0, 9], status: [0, 12] } },
+  7: { key: 7, cols: 9, rows: 4, pos: { hero: [0, 0], pixel: [2, 0], cd: [4, 0], clock: [6, 0], date: [6, 1], stack: [7, 0], vox: [0, 2], piano: [4, 2], radio: [4, 3], status: [7, 3] } },
+  4: { key: 4, cols: 4, rows: 9, pos: { hero: [0, 0], pixel: [2, 0], cd: [0, 2], stack: [2, 2], clock: [0, 4], date: [1, 4], piano: [0, 5], radio: [2, 5], status: [0, 6], vox: [0, 7] } },
+  2: { key: 2, cols: 2, rows: 15, pos: { hero: [0, 0], radio: [0, 2], clock: [0, 3], date: [1, 3], cd: [0, 4], pixel: [0, 6], piano: [0, 8], stack: [0, 9], status: [0, 12], vox: [0, 13] } },
 };
 const TB = .5; // top bar: the device's own menu
 function dims(L) {
@@ -845,9 +845,10 @@ const INFO = {
   status: { ar: 'حالة الموقع', d: 'الموقع تحت الإنشاء. زرار PING بيبعت إشارة بتنوّر كل الموديولز.', i: '—', o: 'ALL MODULES' },
   clock: { ar: 'الساعة', d: 'ساعة كروت بتتقلب كل دقيقة. لما الساعة تبقى 11:11 الجهاز كله بينوّر. دوس WISH والكروت تقلب لحد 11:11، واتمنّى.', i: 'LOCAL TIME', o: '11:11' },
   piano: { ar: 'بيانو 8-BIT', d: 'أوكتاف كامل تعزف عليه بالماوس أو اللمس، واسحب على المفاتيح عشان تعمل glissando. وعلى الكيبورد A W S E D F T G Y H U J K. نوبة WAVE بتغيّر الصوت: square وtriangle وsaw وsine.', i: 'KEYS · TOUCH', o: 'SOUND' },
+  vox: { ar: 'مسجّل الصوت', d: 'ريكوردر بكرتين زي بتوع الاستوديو. دوس REC واتكلم لحد 8 ثواني، وأول ما توقف هيرجعلك صوتك بالصوت اللي اخترته من زراير VOICE: عادي، أو تريلر فيلم، أو روبوت، أو راديو، أو تشيبمنك. غيّر الصوت وهو شغال، وفيدر SPEED بيسرّع ويبطّأ الشريط. صوتك بيفضل في المتصفح بتاعك بس، مش بيتسجّل ولا بيترفع في أي حتة.', i: 'MIC', o: 'MASTER' },
   date: { ar: 'التاريخ', d: 'تقويم دائم ببكرات حقيقية: الشهر، واليوم، وأيام الأسبوع. لف أي بكرة بصباعك، وبعد شوية بترجع للنهارده لوحدها، أو دوس على المقبض النحاسي.', i: 'TODAY', o: 'DRUMS' },
 };
-const ORDER = ['hero', 'pixel', 'cd', 'stack', 'status', 'clock', 'date', 'piano', 'radio'];
+const ORDER = ['hero', 'pixel', 'cd', 'stack', 'status', 'clock', 'date', 'piano', 'radio', 'vox'];
 const BOOT_SEQ = ORDER.slice().sort(() => Math.random() - .5); // first load: devices wake one after another, in a random order
 
 /* ---------- MASTER AUDIO BUS: everything the device plays goes through VOL + a 5-band EQ ---------- */
@@ -1256,6 +1257,159 @@ function startStream() {
     s.text(name, x, 1, st === 'LIVE' ? 1 : 2); if (tw > 38) s.text(name, x + tw + 12, 1, st === 'LIVE' ? 1 : 2);
     if (st === 'TUNING' || st === 'LOADING') for (let i = 0; i < 40; i++) if (hash(i * 3.3 + Math.floor(t * 24)) > .82) s.px(i, (hash(i + t) * 7) | 0, 6);
     s.render(); }; }
+
+/* ---------- 09 VOX 2x2 — L2: a reel-to-reel voice recorder; say something, hear it back through five voices ---------- */
+const VOX = { state: 'idle', buf: null, len: 0, max: 8, fx: 0, rate: 1, mul: 1, src: null, playT0: 0, playDur: 0, lvl: 0, inLvl: 0, stream: null, chunks: [], peaks: new Float32Array(32), msg: '', msgT: -9 };
+const VFX = ['DRY', 'TRAILER', 'ROBOT', 'RADIO', 'CHIPMUNK'];
+const voxCurve = k => { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.tanh(k * x) / Math.tanh(k); } return c; };
+const voxCrush = n => { const c = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; c[i] = Math.round(x * n) / n; } return c; };
+function voxIR(sec, dec) { const n = Math.round(AC.sampleRate * sec), b = AC.createBuffer(2, n, AC.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, dec); } return b; }
+function voxSay(s) { VOX.msg = s; VOX.msgT = S.now; }
+function voxBus() { if (!VOX.bus) { VOX.bus = AC.createGain(); VOX.bus.gain.value = 1; VOX.bus.connect(OUT()); VOX.an = AC.createAnalyser(); VOX.an.fftSize = 1024; VOX.td = new Float32Array(1024); } return VOX.bus; }
+function voxStopPlay() { const ns = VOX.nodes || []; VOX.nodes = []; if (VOX.src) { VOX.src.onended = null; VOX.src = null; } ns.forEach(n => { try { n.stop?.(); } catch (e) { } try { n.disconnect(); } catch (e) { } }); if (VOX.state === 'play') VOX.state = 'idle'; }
+async function voxRec() {
+  if (!ensureAC()) return;
+  if (VOX.state === 'rec') { voxRecStop(); return; } if (VOX.state === 'arm') return;
+  voxStopPlay(); cdStop(); radioOff();
+  if (!navigator.mediaDevices?.getUserMedia) { voxSay('NO MIC'); log('VOX: THIS BROWSER HAS NO MIC ACCESS'); beep(160, .12); return; }
+  VOX.state = 'arm'; voxSay('ALLOW'); log('VOX: ALLOW THE MICROPHONE');
+  try { VOX.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { VOX.state = 'idle'; voxSay('MIC OFF'); log('VOX: MIC BLOCKED · ALLOW IT IN THE BROWSER'); beep(160, .12); return; }
+  if (VOX.state !== 'arm') { VOX.stream.getTracks().forEach(t => t.stop()); VOX.stream = null; return; } // stopped while the browser was asking
+  const mic = AC.createMediaStreamSource(VOX.stream), proc = AC.createScriptProcessor(2048, 1, 1), sink = AC.createGain(); sink.gain.value = 0;
+  VOX.chunks = []; VOX.len = 0; VOX.peaks.fill(0); VOX.buf = null; VOX.state = 'rec'; voxSay('');
+  proc.onaudioprocess = e => { if (VOX.state !== 'rec') return; const d = e.inputBuffer.getChannelData(0); VOX.chunks.push(new Float32Array(d)); let p = 0; for (let i = 0; i < d.length; i += 2) p = Math.max(p, Math.abs(d[i])); VOX.inLvl = p;
+    VOX.len = VOX.chunks.length * 2048 / AC.sampleRate; const col = Math.min(31, Math.floor(VOX.len / VOX.max * 32)); VOX.peaks[col] = Math.max(VOX.peaks[col], p); if (VOX.len >= VOX.max) voxRecStop(); };
+  mic.connect(proc); proc.connect(sink); sink.connect(AC.destination); Object.assign(VOX, { mic, proc, sink });
+  beep(880, .05, 'square', .03); log('VOX: RECORDING · SAY SOMETHING');
+}
+function voxRecStop() {
+  if (VOX.state === 'arm') { VOX.state = 'idle'; return; } if (VOX.state !== 'rec') return; VOX.state = 'idle'; VOX.inLvl = 0;
+  try { VOX.proc.onaudioprocess = null; VOX.mic.disconnect(); VOX.proc.disconnect(); VOX.sink.disconnect(); } catch (e) { }
+  VOX.stream?.getTracks().forEach(t => t.stop()); VOX.stream = null; // the mic light goes off as soon as you stop
+  const n = VOX.chunks.reduce((a, c) => a + c.length, 0), all = new Float32Array(n); let o = 0; VOX.chunks.forEach(c => { all.set(c, o); o += c.length; }); VOX.chunks = [];
+  let pk = 0; for (let i = 0; i < n; i++) pk = Math.max(pk, Math.abs(all[i]));
+  if (n < AC.sampleRate * .4 || pk < .01) { VOX.len = 0; VOX.peaks.fill(0); voxSay('NO VOICE'); log('VOX: NOTHING HEARD · PRESS REC AND SPEAK'); beep(196, .1); return; }
+  let s0 = 0; while (s0 < n && Math.abs(all[s0]) < pk * .08) s0++; s0 = Math.max(0, s0 - Math.round(AC.sampleRate * .06)); // trim the silence before you spoke
+  let s1 = n - 1; while (s1 > s0 && Math.abs(all[s1]) < pk * .04) s1--; s1 = Math.min(n - 1, s1 + Math.round(AC.sampleRate * .25));
+  const len = s1 - s0 + 1, b = AC.createBuffer(1, len, AC.sampleRate), d = b.getChannelData(0), gn = .92 / pk; for (let i = 0; i < len; i++) d[i] = all[s0 + i] * gn;
+  VOX.buf = b; VOX.len = len / AC.sampleRate; { const sq = new Float32Array(32), cn = new Float32Array(32); for (let i = 0; i < len; i++) { const c = Math.min(31, Math.floor(i / len * 32)); sq[c] += d[i] * d[i]; cn[c]++; } let mx = 1e-6; for (let c = 0; c < 32; c++) { sq[c] = Math.sqrt(sq[c] / Math.max(1, cn[c])); mx = Math.max(mx, sq[c]); } for (let c = 0; c < 32; c++) VOX.peaks[c] = Math.pow(sq[c] / mx, 1.3); } // loudness per slice, so the strip shows your words and the gaps
+  log('VOX: GOT IT · ' + VOX.len.toFixed(1) + ' SEC'); voxPlay();
+}
+function voxPlay() {
+  if (!ensureAC()) return; if (VOX.state === 'rec' || VOX.state === 'arm') return;
+  if (!VOX.buf) { voxSay('PUSH REC'); log('VOX: PRESS REC AND SAY SOMETHING FIRST'); beep(200, .06); return; }
+  voxStopPlay(); const fx = VOX.fx, out = voxBus(), src = AC.createBufferSource(), nodes = [src], t0 = AC.currentTime + .03; src.buffer = VOX.buf; let head = src, mul = 1;
+  const chain = (...ns) => ns.forEach(n => { head.connect(n); head = n; nodes.push(n); });
+  const biq = (type, f, g = 0, q = 1) => { const b = AC.createBiquadFilter(); b.type = type; b.frequency.value = f; b.gain.value = g; b.Q.value = q; return b; };
+  const shaper = c => { const w = AC.createWaveShaper(); w.curve = c; w.oversample = '2x'; return w; };
+  const gain = v => { const g = AC.createGain(); g.gain.value = v; return g; };
+  if (fx === 1) { // TRAILER: tape slowed down, chest pushed forward, a big hall and a sub boom under the first word
+    mul = .74; chain(biq('lowshelf', 160, 10), shaper(voxCurve(1.8)), biq('lowpass', 5200), gain(.9));
+    const cv = AC.createConvolver(); cv.buffer = voxIR(2.8, 2.4); const wg = gain(.55); head.connect(cv); cv.connect(wg); wg.connect(out); nodes.push(cv, wg);
+    const bo = AC.createOscillator(), bg = AC.createGain(); bo.type = 'sine'; bo.frequency.setValueAtTime(92, t0); bo.frequency.exponentialRampToValueAtTime(30, t0 + 1.8); bg.gain.setValueAtTime(.0001, t0); bg.gain.exponentialRampToValueAtTime(.8, t0 + .02); bg.gain.exponentialRampToValueAtTime(.0001, t0 + 2.2); bo.connect(bg); bg.connect(out); bo.start(t0); bo.stop(t0 + 2.3); nodes.push(bo, bg);
+  } else if (fx === 2) { // ROBOT: ring modulator, a short metal comb and a 4-bit crunch
+    const rm = gain(0), car = AC.createOscillator(); car.type = 'sine'; car.frequency.value = 62; car.connect(rm.gain); car.start(t0); nodes.push(car); chain(rm, shaper(voxCrush(10)), gain(1.7));
+    const dl = AC.createDelay(.05); dl.delayTime.value = .0068; const fb = gain(.58); head.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(out); nodes.push(dl, fb);
+  } else if (fx === 3) { // RADIO: a small speaker in a car dashboard + static between the words
+    chain(biq('highpass', 520, 0, .8), biq('peaking', 1700, 9, 1.1), shaper(voxCurve(5)), biq('lowpass', 3300), gain(.75));
+    const nz = AC.createBuffer(1, Math.round(AC.sampleRate * (VOX.buf.duration + .5)), AC.sampleRate), nd = nz.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * .04 + (Math.random() < .0006 ? (Math.random() - .5) * 1.6 : 0);
+    const ns = AC.createBufferSource(); ns.buffer = nz; const nf = biq('bandpass', 2400, 0, .7), ng = gain(.5); ns.connect(nf); nf.connect(ng); ng.connect(out); ns.start(t0); nodes.push(ns, nf, ng);
+  } else if (fx === 4) { mul = 1.62; chain(biq('highshelf', 3000, 3)); } // CHIPMUNK: the tape runs fast
+  head.connect(out); head.connect(VOX.an);
+  VOX.mul = mul; src.playbackRate.value = VOX.rate * mul; src.start(t0); VOX.src = src; VOX.nodes = nodes; VOX.state = 'play'; VOX.playT0 = t0; VOX.pos = 0;
+  src.onended = () => { if (VOX.src !== src) return; VOX.src = null; VOX.state = 'idle'; setTimeout(() => nodes.forEach(n => { try { n.stop?.(); } catch (e) { } try { n.disconnect(); } catch (e) { } }), 2600); };
+  log('VOX: ' + VFX[fx] + (Math.abs(VOX.rate - 1) > .04 ? ' · SPEED ' + VOX.rate.toFixed(2) : ''));
+}
+{ const m = new Module('vox', { num: '09', name: 'VOX' }); m.st = VOX;
+  const RX = -.3, RZ = -.5, RW = 1.3, RD = .78; // reel deck
+  m.hole({ type: 'r', x: RX, z: RZ, w: RW, d: RD, r: .05 });
+  const MX = .7, MZ = -.64, MR = .19; m.hole({ type: 'c', x: MX, z: MZ, r: MR + .05 }); m.label('MIC', MX, MZ + MR + .1, { align: 'center', size: .0095 });
+  const VX = .7, VZ = -.13, VW = .5, VD = .2; m.hole({ type: 'r', x: VX, z: VZ, w: VW + .05, d: VD + .05, r: .03 });
+  m.scr = m.screen({ x: -.56, z: .2, cols: 32, rows: 15, mode: 'led', s: 10 });
+  m.recKey = m.key({ x: -.86, z: .58, w: .22, d: .15, label: 'REC', accent: true, lamp: true, onPress: () => voxRec() });
+  m.playKey = m.key({ x: -.6, z: .58, w: .22, d: .15, label: 'PLAY', tone: 'dark', lamp: true, onPress: () => { if (VOX.state === 'play') { voxStopPlay(); log('VOX: STOP'); } else voxPlay(); } });
+  m.key({ x: -.34, z: .58, w: .22, d: .15, label: 'STOP', tone: 'dark', onPress: () => { if (VOX.state === 'rec' || VOX.state === 'arm') voxRecStop(); else if (VOX.state === 'play') { voxStopPlay(); log('VOX: STOP'); } } });
+  m.plate(-.6, .58, .86, .27);
+  m.label('PRESS REC · SPEAK', -.97, .8, { size: .0095 });
+  m.voice = m.radio({ x: .32, z: .42, items: VFX, w: .34, d: .1, gap: .052, dir: 'col', value: 0, onChange: i => { VOX.fx = i; if (VOX.state === 'play') voxPlay(); else log('VOX: VOICE ' + VFX[i]); } });
+  m.label('VOICE', .32, .84, { align: 'center', size: .0095 });
+  m.speed = m.vfader({ x: .84, z: .42, len: .5, cw: .13, value: .5, onChange: v => { VOX.rate = Math.pow(2, (v - .5) * 1.4); if (VOX.src) VOX.src.playbackRate.setTargetAtTime(VOX.rate * VOX.mul, AC.currentTime, .03); } });
+  m.label('SPEED', .84, .84, { align: 'center', size: .0095 });
+  m.led_ = m.led({ x: .96, z: .96 }); m.label('09 VOX', -.97, .96);
+  m.build();
+  const D0 = m.deck;
+  // --- reel deck: brushed plate, two open reels, guides, a head block, the tape running between them
+  const bedC = document.createElement('canvas'); bedC.width = 512; bedC.height = 320; { const c = bedC.getContext('2d'); c.fillStyle = '#26262a'; c.fillRect(0, 0, 512, 320); for (let y = 0; y < 320; y++) { c.fillStyle = `rgba(255,255,255,${.015 + .03 * hash(y * 3.1)})`; c.fillRect(0, y, 512, 1); }
+    c.fillStyle = '#4a4a50'; drawPixelText(c, 'E11 · REEL TO REEL · 2 TRACK', 16, 300, 2.2, '#77757a'); drawPixelText(c, '7.5 IPS', 496, 300, 2.2, '#FF5A1F', 'right'); }
+  const bedT = new THREE.CanvasTexture(bedC); bedT.colorSpace = THREE.SRGBColorSpace; bedT.anisotropy = 8;
+  const bed = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), new THREE.MeshStandardMaterial({ map: bedT, roughness: .45, metalness: .55 })); bed.rotation.x = -Math.PI / 2; bed.position.set(RX, D0 + .004, RZ); bed.receiveShadow = true; bed.userData.cannotReceiveAO = true; m.inner.add(bed);
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc9cbcf, roughness: .28, metalness: 1 }), tapeM = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: .55, metalness: .1 });
+  const flC = document.createElement('canvas'); flC.width = flC.height = 256; { const c = flC.getContext('2d'); c.fillStyle = '#fff'; c.beginPath(); c.arc(128, 128, 127, 0, 7); c.fill(); c.globalCompositeOperation = 'destination-out';
+    for (let k = 0; k < 3; k++) { const a = k * 2.094 - 1.571; c.beginPath(); c.arc(128, 128, 104, a - .78, a + .78); c.arc(128, 128, 44, a + .66, a - .66, true); c.closePath(); c.fill(); } c.beginPath(); c.arc(128, 128, 14, 0, 7); c.fill(); }
+  const flT = new THREE.CanvasTexture(flC); const flM = new THREE.MeshStandardMaterial({ color: 0xd2d4d8, roughness: .3, metalness: .95, alphaMap: flT, transparent: true, alphaTest: .5, side: THREE.DoubleSide });
+  const RR = .275, reels = [-.62, .02].map((rx, i) => { const g = new THREE.Group(); g.position.set(rx, D0, RZ - .05); m.inner.add(g);
+    const pack = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, .03, 64), tapeM); pack.position.y = .045; pack.castShadow = true; g.add(pack);
+    const fl = new THREE.Mesh(new THREE.CircleGeometry(RR, 64), flM); fl.rotation.x = -Math.PI / 2; fl.position.y = .066; fl.castShadow = true; g.add(fl);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .05, 24), MAT.knob); hub.position.y = .06; g.add(hub);
+    for (let k = 0; k < 3; k++) { const tooth = new THREE.Mesh(new THREE.BoxGeometry(.016, .02, .05), MAT.capD); const a = k * 2.094; tooth.position.set(Math.cos(a) * .028, .09, Math.sin(a) * .028); tooth.rotation.y = -a; g.add(tooth); }
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .02, 16), MAT.orange); cap.position.y = .1; g.add(cap);
+    return { g, pack, rx, ang: 0, r: i ? .1 : .24 }; });
+  const posts = [[-.74, -.2], [-.36, -.17], [-.24, -.17], [.14, -.2]].map(([x, z]) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, .07, 20), steel); p.position.set(x, D0 + .035, z); p.castShadow = true; m.inner.add(p); return [x, z]; });
+  const headB = new THREE.Mesh(new RoundedBoxGeometry(.12, .07, .06, 3, .012), steel); headB.position.set(-.3, D0 + .035, -.125); headB.castShadow = true; m.inner.add(headB);
+  const recLamp = new THREE.MeshBasicMaterial({ color: 0x331208 }); { const l = new THREE.Mesh(new THREE.BoxGeometry(.03, .012, .016), recLamp); l.position.set(-.3, D0 + .074, -.125); m.inner.add(l); }
+  const segs = []; for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(1, .026, .006), tapeM); s.position.y = D0 + .045; m.inner.add(s); segs.push(s); }
+  const seg = (s, x0, z0, x1, z1) => { s.position.x = (x0 + x1) / 2; s.position.z = (z0 + z1) / 2; s.scale.x = Math.max(.001, Math.hypot(x1 - x0, z1 - z0)); s.rotation.y = -Math.atan2(z1 - z0, x1 - x0); };
+  // --- microphone: a steel mesh dome on a ring, with a light ring that reads your level
+  const mgC = document.createElement('canvas'); mgC.width = mgC.height = 256; { const c = mgC.getContext('2d'); c.fillStyle = '#8d8f95'; c.fillRect(0, 0, 256, 256); c.fillStyle = '#121214'; for (let y = 0; y < 256; y += 8) for (let x = (y / 8) % 2 ? 4 : 0; x < 256; x += 8) { c.beginPath(); c.arc(x, y, 2.6, 0, 7); c.fill(); } }
+  const mgT = new THREE.CanvasTexture(mgC); mgT.wrapS = mgT.wrapT = THREE.RepeatWrapping; mgT.repeat.set(4, 2); mgT.colorSpace = THREE.SRGBColorSpace;
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(MR, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ map: mgT, roughness: .55, metalness: .35, color: 0xc9cbd0 })); dome.scale.y = .6; dome.position.set(MX, D0 + .03, MZ); dome.castShadow = true; m.inner.add(dome);
+  const mring = new THREE.Mesh(new THREE.TorusGeometry(MR + .006, .014, 12, 64), steel); mring.rotation.x = Math.PI / 2; mring.position.set(MX, D0 + .032, MZ); m.inner.add(mring);
+  const glowM = new THREE.MeshBasicMaterial({ color: 0x1a0a05 }); const glowR = new THREE.Mesh(new THREE.RingGeometry(MR + .024, MR + .04, 64), glowM); glowR.rotation.x = -Math.PI / 2; glowR.position.set(MX, D0 + .008, MZ); glowR.userData.cannotReceiveAO = true; m.inner.add(glowR);
+  // --- VU meter: backlit cream scale with a real needle
+  const vuC = document.createElement('canvas'); vuC.width = 500; vuC.height = 200; { const c = vuC.getContext('2d'), g = c.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, '#F3E3B4'); g.addColorStop(1, '#D9B56A'); c.fillStyle = g; c.fillRect(0, 0, 500, 200);
+    const cx = 250, cy = 250, R = 190; c.lineWidth = 4; c.strokeStyle = '#2a2014'; c.beginPath(); c.arc(cx, cy, R, -2.3, -1.12); c.stroke(); c.strokeStyle = '#B5421A'; c.lineWidth = 8; c.beginPath(); c.arc(cx, cy, R, -1.12, -.84); c.stroke();
+    const dbs = ['-20', '-10', '-7', '-5', '-3', '0', '+3']; dbs.forEach((s, i) => { const a = -2.3 + i / 6 * 1.46; c.fillStyle = i >= 5 ? '#B5421A' : '#2a2014'; c.fillRect(cx + Math.cos(a) * (R - 2) - 2, cy + Math.sin(a) * (R - 2) - 14, 4, 16); drawType(c, s, cx + Math.cos(a) * (R - 40), cy + Math.sin(a) * (R - 40), 22, i >= 5 ? '#B5421A' : '#2a2014'); });
+    drawType(c, 'VU', 250, 150, 34, '#2a2014'); }
+  const vuT = new THREE.CanvasTexture(vuC); vuT.colorSpace = THREE.SRGBColorSpace; vuT.anisotropy = 8; const vuMat = new THREE.MeshBasicMaterial({ map: vuT }); vuMat.color.setScalar(.75);
+  const vu = new THREE.Mesh(new THREE.PlaneGeometry(VW, VD), vuMat); vu.rotation.x = -Math.PI / 2; vu.position.set(VX, D0 + .01, VZ); vu.userData.cannotReceiveAO = true; m.inner.add(vu);
+  const needlePiv = new THREE.Group(); needlePiv.position.set(VX, D0 + .016, VZ - VD / 2 + .25); // pivot sits under the plastic, below the window, like a real meter m.inner.add(needlePiv);
+  const needle = new THREE.Mesh(new THREE.BoxGeometry(.006, .004, .2), new THREE.MeshBasicMaterial({ color: 0x1a1410 })); needle.position.z = -.1; needlePiv.add(needle); needle.userData.cannotReceiveAO = true;
+  const vgl = new THREE.Mesh(new THREE.PlaneGeometry(VW, VD), MAT.glass); vgl.rotation.x = -Math.PI / 2; vgl.position.set(VX, D0 + .05, VZ); vgl.userData.noAO = true; m.inner.add(vgl);
+  { const bw = .026, ow = VW + .05 + bw * 2, od = VD + .05 + bw * 2, bar = (bx, bz, sx, sz) => { const b = new THREE.Mesh(new RoundedBoxGeometry(sx, .03, sz, 2, .008), MAT.capD); b.position.set(VX + bx, m.th + .006, VZ + bz); b.castShadow = true; m.inner.add(b); }; bar(0, -od / 2 + bw / 2, ow, bw); bar(0, od / 2 - bw / 2, ow, bw); bar(-ow / 2 + bw / 2, 0, bw, od); bar(ow / 2 - bw / 2, 0, bw, od); }
+  let nAng = -.73, nVel = 0;
+  TICKERS.push((dt, t) => {
+    let lv = 0, prog = 0, speed = 0;
+    if (VOX.state === 'rec') { lv = VOX.inLvl; prog = VOX.len / VOX.max; speed = 1; }
+    else if (VOX.state === 'play' && VOX.src && AC) { VOX.an.getFloatTimeDomainData(VOX.td); let p = 0; for (let i = 0; i < VOX.td.length; i += 2) p = Math.max(p, Math.abs(VOX.td[i])); lv = p * (.4 + MASTER.vol); speed = AC.currentTime >= VOX.playT0 ? VOX.rate * VOX.mul : 0;
+      VOX.ph = (VOX.ph || 0) + dt * speed / Math.max(.3, VOX.buf.duration); prog = clamp(VOX.ph); }
+    if (VOX.state !== 'play') VOX.ph = 0;
+    VOX.lvl += (lv - VOX.lvl) * Math.min(1, dt * 14);
+    // reels: the tape moves at one speed, so the emptier reel turns faster
+    const p = VOX.state === 'rec' || VOX.state === 'play' ? prog : 0; reels[0].r += ((.24 - .14 * p) - reels[0].r) * Math.min(1, dt * 4); reels[1].r += ((.1 + .14 * p) - reels[1].r) * Math.min(1, dt * 4);
+    reels.forEach(R => { R.pack.scale.set(R.r, 1, R.r); R.ang -= dt * speed * .9 / Math.max(.08, R.r); R.g.rotation.y = R.ang; });
+    const [L, Rr] = reels, z0 = RZ - .05; seg(segs[0], L.rx - .02, z0 + L.r, posts[0][0], posts[0][1] - .02); seg(segs[1], posts[0][0], posts[0][1] + .022, posts[1][0], posts[1][1] + .022); seg(segs[2], posts[1][0], posts[1][1] + .022, posts[2][0], posts[2][1] + .022); seg(segs[3], posts[2][0], posts[2][1] + .022, posts[3][0], posts[3][1] + .022); seg(segs[4], posts[3][0], posts[3][1] - .02, Rr.rx + .02, z0 + Rr.r);
+    // VU needle: weighted, overshoots a little
+    const tgt = -.73 + clamp(Math.sqrt(VOX.lvl) * 1.25) * 1.46; nVel += (tgt - nAng) * dt * 140; nVel *= Math.pow(.0009, dt); nAng += nVel * dt; needlePiv.rotation.y = -nAng;
+    vuMat.color.setScalar(VOX.state === 'idle' ? .75 : 1.25);
+    const g = VOX.state === 'rec' ? .35 + VOX.lvl * 5 : 0; glowM.color.setRGB(.1 + g * 4, .04 + g, .02 + g * .25);
+    recLamp.color.set(VOX.state === 'rec' ? (Math.floor(t * 3) % 2 ? new THREE.Color(5, .4, .2) : new THREE.Color(.6, .05, .02)) : new THREE.Color(0x331208));
+    m.recKey.on = VOX.state === 'rec' || (VOX.state === 'arm' && Math.floor(t * 4) % 2 === 0); m.playKey.on = VOX.state === 'play'; m.led_.set(VOX.state !== 'idle'); m.active = VOX.state !== 'idle';
+  });
+  m.draw = t => { const s = m.scr; s.clear(0);
+    const st = VOX.state, msg = t - VOX.msgT < 3 && VOX.msg, rt = (v, y, c) => s.text(v, 32 - s.tw(v), y, c);
+    if (st === 'rec') { if (Math.floor(t * 3) % 2) s.icon('dot', 0, 1, 3, MICRO); s.text('REC', 6, 1, 3); rt(VOX.len.toFixed(1), 1, 1); }
+    else if (st === 'play') s.text(VFX[VOX.fx], 1, 1, 1);
+    else if (st === 'arm') s.text('ALLOW', 1, 1, Math.floor(t * 4) % 2 ? 3 : 1);
+    else if (msg) s.text(msg, 1, 1, 3);
+    else if (VOX.buf) { s.text('TAKE', 1, 1, 1); rt(VOX.len.toFixed(1), 1, 2); }
+    else s.text('PUSH REC', 1, 1, 2);
+    s.dots(0, 7, 32, 2);
+    // the tape strip: your take as a waveform, the playhead in orange
+    const ph = st === 'play' ? Math.min(31, Math.floor(VOX.ph * 32)) : -1, rc = st === 'rec' ? Math.min(31, Math.floor(VOX.len / VOX.max * 32)) : -1;
+    for (let i = 0; i < 32; i++) { const a = VOX.peaks[i], h = a > .06 ? Math.max(1, Math.round(a * 3)) : 0, c = i === ph || i === rc ? 3 : ph >= 0 && i < ph ? 6 : 1; if (h) for (let k = -h; k <= h; k++) s.px(i, 11 + k, c); else s.px(i, 11, i === rc ? 3 : 6); }
+    s.render(); };
+}
 
 /* ---------- 02 STACK 2x3 — L2: falling blocks ---------- */
 const SHAPES = { I: [[0, 1], [1, 1], [2, 1], [3, 1]], O: [[1, 0], [2, 0], [1, 1], [2, 1]], T: [[1, 0], [0, 1], [1, 1], [2, 1]], S: [[1, 0], [2, 0], [0, 1], [1, 1]], Z: [[0, 0], [1, 0], [1, 1], [2, 1]], J: [[0, 0], [0, 1], [1, 1], [2, 1]], L: [[2, 0], [0, 1], [1, 1], [2, 1]] };
@@ -1858,7 +2012,7 @@ addEventListener('resize', () => {
    ========================================================= */
 let EDIT = false, drag = null;
 const REMOVED = new Set();
-const BASE_ROWS = { 7: 3, 4: 7, 2: 13 };
+const BASE_ROWS = { 7: 4, 4: 9, 2: 15 };
 const DEFAULTS = JSON.stringify(Object.fromEntries(Object.entries(LAYOUTS).map(([k, v]) => [k, { rows: v.rows, pos: v.pos }])));
 function modOf(o) { while (o) { if (o.userData && o.userData.modRef) return o.userData.modRef; o = o.parent; } return null; }
 function occupied(Lx, except) { const occ = new Set(); for (const id in Lx.pos) { if (id === except) continue; const [c, r] = Lx.pos[id], [w, h] = SIZES[id]; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) occ.add((r + j) * 100 + c + i); } return occ; }
@@ -1877,8 +2031,8 @@ function reflow(d0, msg) {
   fitCamera(false); saveLayout(); if (msg) log(msg); updateTray();
   document.getElementById('sub').textContent = `AI STUDIO SOLUTIONS · GRID ${L.cols}X${L.rows}`;
 }
-function saveLayout() { try { localStorage.setItem('e11-layouts-v3', JSON.stringify({ removed: [...REMOVED], layouts: Object.fromEntries(Object.entries(LAYOUTS).map(([k, v]) => [k, { rows: v.rows, pos: v.pos }])) })); } catch (e) { } }
-function loadLayout() { try { const d = JSON.parse(localStorage.getItem('e11-layouts-v3') || 'null'); if (!d) return; (d.removed || []).forEach(id => { if (SIZES[id]) REMOVED.add(id); }); for (const k in d.layouts) if (LAYOUTS[k]) { LAYOUTS[k].rows = d.layouts[k].rows; LAYOUTS[k].pos = d.layouts[k].pos; } } catch (e) { } }
+function saveLayout() { try { localStorage.setItem('e11-layouts-v4', JSON.stringify({ removed: [...REMOVED], layouts: Object.fromEntries(Object.entries(LAYOUTS).map(([k, v]) => [k, { rows: v.rows, pos: v.pos }])) })); } catch (e) { } }
+function loadLayout() { try { const d = JSON.parse(localStorage.getItem('e11-layouts-v4') || 'null'); if (!d) return; (d.removed || []).forEach(id => { if (SIZES[id]) REMOVED.add(id); }); for (const k in d.layouts) if (LAYOUTS[k]) { LAYOUTS[k].rows = d.layouts[k].rows; LAYOUTS[k].pos = d.layouts[k].pos; } } catch (e) { } }
 function removeTool(id) {
   const m = modules[id]; if (!m || REMOVED.has(id)) return; const d0 = dims(L);
   REMOVED.add(id); for (const k in LAYOUTS) delete LAYOUTS[k].pos[id];
