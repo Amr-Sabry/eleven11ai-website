@@ -2345,40 +2345,69 @@ function setEdit(v) { EDIT = v; UI.editLed?.set(v); if (UI.editKey) UI.editKey.o
    BOOT + LOOP
    ========================================================= */
 /* ---------- FLIP: every device has a latch on its top edge; press it and the device turns over in place to show its back ---------- */
-// three backs, from Amr's references: CARBON (matte mark standing on a carbon-weave plate), POCKET (the wish form sunk into a bead-blast plate, the mark standing in it), BADGE (a matte block with the mark cut into it)
-const BACKS = { hero: 'pocket', pixel: 'carbon', cd: 'badge', stack: 'pocket', vox: 'carbon', stage: 'badge', status: 'carbon', piano: 'badge', radio: 'metal', clock: 'badge', date: 'carbon' };
-const BK_MAT = { carbon: new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: .92 }), metal: new THREE.MeshStandardMaterial({ color: 0x55575c, roughness: .56, metalness: .72 }), dark: new THREE.MeshStandardMaterial({ color: 0x2a2b2f, roughness: .55, metalness: .7 }), badge: new THREE.MeshStandardMaterial({ color: 0x3d3d42, roughness: .7 }), cut: new THREE.MeshStandardMaterial({ color: 0x121214, roughness: .9 }) };
-BK_MAT.pocket = BK_MAT.metal;
-function backTex(m, fin) { const k = 256, cv = document.createElement('canvas'); cv.width = Math.round(m.W * k); cv.height = Math.round(m.D * k); const c = cv.getContext('2d'), W = cv.width, H = cv.height;
-  if (fin === 'carbon') { c.fillStyle = '#0d0d0f'; c.fillRect(0, 0, W, H); const q = 12; for (let y = 0; y < H; y += q) for (let x = 0; x < W; x += q) { const i = x / q, j = y / q, hz = ((i + j) % 4) < 2, g = hz ? c.createLinearGradient(x, y, x, y + q) : c.createLinearGradient(x, y, x + q, y); g.addColorStop(0, '#111114'); g.addColorStop(.5, hz ? '#2c2d33' : '#23242a'); g.addColorStop(1, '#0f0f12'); c.fillStyle = g; c.fillRect(x + .6, y + .6, q - 1.2, q - 1.2); } } // 2/2 twill
-  else if (fin === 'badge') { c.fillStyle = '#18181b'; c.fillRect(0, 0, W, H); for (let i = 0; i < W * H / 90; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.12)'; c.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5); } }
-  else { c.fillStyle = fin === 'pocket' ? '#2b2c30' : '#6a6c71'; c.fillRect(0, 0, W, H); for (let i = 0; i < W * H / 14; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.14)'; c.fillRect(Math.random() * W, Math.random() * H, 1.2, 1.2); } } // bead blast
-  [[26, 26], [W - 26, 26], [26, H - 26], [W - 26, H - 26]].forEach(([x, y]) => { c.fillStyle = '#8e9095'; c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); c.fillStyle = '#1c1c1e'; c.fillRect(x - 6, y - 1.3, 12, 2.6); });
-  drawPixelText(c, 'TAP TO WAKE', W / 2, H - 26, Math.min(2, W / 90), fin === 'pocket' || fin === 'metal' ? '#3a3b3f' : '#4a4a4f', 'center');
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; }
-function backMat(fin, map) { return fin === 'carbon' ? new THREE.MeshPhysicalMaterial({ map, roughness: .36, metalness: .1, clearcoat: .9, clearcoatRoughness: .18 }) : fin === 'badge' ? new THREE.MeshStandardMaterial({ map, roughness: .74 }) : new THREE.MeshStandardMaterial({ map, roughness: .48, metalness: .78 }); }
-function buildBack(m) { // the mark on the back, in the device's own coordinates as you'll see them once it's turned over
-  const fin = BACKS[m.id] || 'badge', small = m.W < 1.5 && m.D < 1.5, strip = !small && Math.min(m.W, m.D) < 1.5;
-  const g = new THREE.Group(); g.rotation[m.flipAx] = Math.PI; g.position.y = -.0015; m.inner.add(g);
-  const lay = small ? 'icon' : strip ? 'lock' : fin === 'pocket' ? 'form' : 'stack', asp = { icon: 148.24 / 240, lock: 106.03 / 240, stack: 282.03 / 240, form: 660 / 720 }[lay];
-  const fw = fin === 'pocket' ? .9 : small ? .6 : strip ? .62 : .54, fd = fin === 'pocket' ? .68 : small ? .5 : strip ? .5 : .6;
-  const width = Math.min(m.W * fw, m.D * fd / asp), depth = width * asp, mat = BK_MAT[fin];
-  const label = m.num + ' ' + m.name, ps = Math.min(Math.min(m.W, m.D) * .02, m.W * .55 / (label.length * 6)), gap = fin === 'pocket' ? 0 : .07 + 7 * ps;
-  const logo = fin === 'carbon' ? e11Relief(lay, { width, h: .018, mat, res: 3 })
-    : fin === 'badge' ? e11Relief(lay, { width, h: .026, mat, inner: BK_MAT.cut, style: 'carve', pad: width * .07, res: 3 })
-    : fin === 'pocket' ? e11Relief(lay, { width, h: .022, mat, style: 'pocket', plate: [m.W - .06, m.D - .06], res: 1.4 })
-    : e11Relief(lay, { width, h: .016, mat: BK_MAT.dark, res: 3 });
-  logo.position.z = fin === 'pocket' ? -.06 : -gap / 2; g.add(logo);
-  // the variable cell: this device's number and name, in the same material
-  const cells = []; let tw = label.length * 6 - 1; [...label].forEach((ch, i) => { const gl = F5[ch]; if (!gl) return; for (let r = 0; r < 7; r++) for (let k = 0; k < 5; k++) if (gl[r][k] === '#') cells.push([i * 6 + k, r, 1, 1]); });
-  const nz = fin === 'pocket' ? m.D / 2 - .12 - 7 * ps : logo.position.z + depth / 2 + .07, ny = fin === 'pocket' ? .022 : 0;
-  const nm = e11Blocks(cells, ps, -tw * ps / 2, nz, ny, .01, fin === 'metal' || fin === 'pocket' ? BK_MAT.dark : mat); if (nm) g.add(nm);
-  return g; }
+// the back of a real device: the same plastic as the front, a cover seam, rubber feet and screws, the I/O this device would really have,
+// cut vents, a rating sticker with the mark — and the big number + orange name, laid out as before
+const PORTS = { hero: ['jack:L', 'jack:R', 'jack:PHONES', 'usbc:USB-C'], pixel: ['sd:SD CARD', 'usbc:USB-C'], cd: ['jack:LINE OUT', 'usbc:USB-C'], stack: ['usbc:USB-C', 'lan:LINK'], status: ['lan:LAN', 'usbc:USB-C'], clock: ['usbc:USB-C'], date: ['usbc:USB-C'], piano: ['din:MIDI IN', 'din:MIDI OUT', 'usbc:USB-C'], radio: ['ant:ANT', 'jack:LINE OUT'], vox: ['jack:MIC IN', 'jack:LINE OUT', 'usbc:USB-C'], stage: ['xlr:DMX OUT', 'jack:SMPTE', 'usbc:USB-C'] };
+const BK = { rubber: new THREE.MeshStandardMaterial({ color: 0x101011, roughness: .95 }), hole: new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1 }), ring: new THREE.MeshStandardMaterial({ color: 0xb9bbbf, roughness: .28, metalness: 1 }) };
+function stickerTex(m, w, d) { // the rating label: printed ink on a silver-white sticker
+  const k = 900, cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(d * k); const c = cv.getContext('2d'), W = cv.width, H = cv.height, ink = '#17171a';
+  const g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#e9e8e3'); g.addColorStop(1, '#cfcfca'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.strokeStyle = ink; c.lineWidth = 3; c.strokeRect(10, 10, W - 20, H - 20);
+  const lh = H * .25, sc = lh / 106.03; c.save(); c.translate(26, 26); c.scale(sc, sc); c.translate(-300, -416); // the lockup, printed
+  E11LOGO.lock.forEach(it => { c.save(); c.translate(E11LOGO.lg[0], E11LOGO.lg[1]); c.scale(E11LOGO.lg[2], E11LOGO.lg[2]); if (it.t) { c.translate(it.t[0], it.t[1]); c.scale(it.t[2], it.t[2]); } c.fillStyle = it.c === 'D' ? ink : it.c === 'O' ? '#FF5A1F' : '#dcdcd7'; c.fill(new Path2D(it.d), it.e ? 'evenodd' : 'nonzero'); c.restore(); });
+  c.restore();
+  const sn = '11' + m.num + '-' + String(1000 + Math.floor(hash(m.num.charCodeAt(0) * 7.3 + m.num.charCodeAt(1)) * 8999)) + '-26';
+  const rows = [['MODEL', 'E11-' + m.num + ' ' + m.name], ['S/N', sn], ['INPUT', '5V ⎓ 1A'], ['', 'DESIGNED IN DUBAI']], fs = Math.max(14, H * .085);
+  c.fillStyle = ink; c.font = `600 ${fs}px "IBM Plex Mono", ui-monospace, monospace`; c.textBaseline = 'middle';
+  rows.forEach(([a, b], i) => { const y = H * .47 + i * fs * 1.24; if (a) { c.globalAlpha = .55; c.fillText(a, 26, y); c.globalAlpha = 1; } c.fillText(b, 26 + fs * 3.8, y); });
+  const bx = W * .66, bw = W - bx - 26, by = H * .47 - fs * .6, bh = H - by - 40; let x = bx; for (let i = 0; x < bx + bw; i++) { const t = 2 + Math.floor(hash(i * 3.17 + m.num.charCodeAt(1)) * 4); if (i % 2 === 0) { c.fillStyle = ink; c.fillRect(x, by, t, bh * .78); } x += t; } // barcode
+  c.font = `500 ${fs * .7}px "IBM Plex Mono", ui-monospace, monospace`; c.textAlign = 'center'; c.fillText(sn, bx + bw / 2, by + bh * .9);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; return t; }
+function buildBack(m) {
+  const g = new THREE.Group(); g.rotation[m.flipAx] = Math.PI; g.position.y = -.0015; m.inner.add(g); // design space: as you'll see it once the device is turned over
+  const W = m.W, D = m.D, small = W < 1.5 && D < 1.5, strip = !small && D < 1.5;
+  const mesh = (geo, mat, x, y, z) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  // the cover: same speckled plastic as the device, with its seam inset from the edge
+  const pg = new THREE.PlaneGeometry(W - .02, D - .02); pg.rotateX(-Math.PI / 2); planarUV(pg, 0, 0); const plate = new THREE.Mesh(pg, MAT.body); plate.receiveShadow = true; plate.userData.cannotReceiveAO = true; g.add(plate);
+  { const sx = W / 2 - .07, sz = D / 2 - .07; [[0, -sz, W - .14, .006], [0, sz, W - .14, .006], [-sx, 0, .006, D - .14], [sx, 0, .006, D - .14]].forEach(([x, z, w, d]) => mesh(new THREE.BoxGeometry(w, .002, d), BK.hole, x, .0004, z)); }
+  // rubber feet in the corners, screws beside them
+  const fx = W / 2 - (small ? .13 : .16), fz = D / 2 - (small ? .13 : .16), fr = small ? .055 : .07;
+  [[-fx, -fz], [fx, -fz], [-fx, fz], [fx, fz]].forEach(([x, z]) => { mesh(new THREE.CylinderGeometry(fr, fr * 1.08, .016, 36), BK.rubber, x, .008, z); });
+  if (!small && !strip) [[-fx, -fz + .26], [fx, -fz + .26], [-fx, fz - .26], [fx, fz - .26]].forEach(([x, z]) => { mesh(new THREE.CylinderGeometry(.03, .03, .008, 24), MAT.screw, x, .004, z); const sl = mesh(new THREE.BoxGeometry(.044, .003, .007), BK.hole, x, .008, z); sl.rotation.y = hash(x * 9 + z) * 3; });
+  // I/O
+  const ports = PORTS[m.id] || ['usbc:USB-C'], pz = -D / 2 + (small ? .2 : .22), step = small ? .3 : .5;
+  ports.forEach((p, i) => { const [type, name] = p.split(':'), x = (i - (ports.length - 1) / 2) * step;
+    if (type === 'usbc') { mesh(new RoundedBoxGeometry(.085, .012, .032, 3, .014), BK.hole, x, .002, pz); mesh(new THREE.BoxGeometry(.05, .004, .007), BK.ring, x, .006, pz); }
+    else if (type === 'jack') { const r = mesh(new THREE.TorusGeometry(.03, .009, 12, 32), BK.ring, x, .006, pz); r.rotation.x = Math.PI / 2; mesh(new THREE.CylinderGeometry(.022, .022, .006, 24), BK.hole, x, .003, pz); }
+    else if (type === 'din' || type === 'xlr') { const R = type === 'din' ? .055 : .062; const r = mesh(new THREE.TorusGeometry(R, .008, 12, 40), BK.ring, x, .006, pz); r.rotation.x = Math.PI / 2; mesh(new THREE.CylinderGeometry(R - .004, R - .004, .006, 32), BK.hole, x, .003, pz);
+      const n = type === 'din' ? 5 : 3; for (let k = 0; k < n; k++) { const a = type === 'din' ? Math.PI * (.25 + k * .125) * 2 - Math.PI : -Math.PI / 2 + k * 2.1; mesh(new THREE.CylinderGeometry(.006, .006, .012, 8), BK.ring, x + Math.cos(a) * R * .55, .007, pz + Math.sin(a) * R * .55); } }
+    else if (type === 'ant') { mesh(new THREE.CylinderGeometry(.04, .04, .03, 6), BK.ring, x, .015, pz); mesh(new THREE.CylinderGeometry(.016, .016, .032, 16), BK.hole, x, .017, pz); mesh(new THREE.CylinderGeometry(.004, .004, .04, 8), BK.ring, x, .02, pz); }
+    else if (type === 'sd') { mesh(new RoundedBoxGeometry(.13, .01, .022, 2, .006), BK.hole, x, .002, pz); }
+    else if (type === 'lan') { mesh(new RoundedBoxGeometry(.075, .012, .066, 2, .006), BK.hole, x, .002, pz); mesh(new THREE.BoxGeometry(.03, .004, .012), BK.ring, x, .007, pz - .02); }
+    const lb = makeLabel(name, { size: .0085, align: 'center' }); lb.position.set(x, .0012, pz + (type === 'din' || type === 'xlr' ? .1 : .075)); g.add(lb); });
+  // number + name, as on the first back: big light number, orange name under it
+  const put = (str, ps, cx, cz, mat, h) => { const cells = []; [...str].forEach((ch, i) => { const gl = F5[ch]; if (!gl) return; for (let r = 0; r < 7; r++) for (let k = 0; k < 5; k++) if (gl[r][k] === '#') cells.push([i * 6 + k, r, 1, 1]); }); const tw = str.length * 6 - 1, im = e11Blocks(cells, ps, cx - tw * ps / 2, cz - 3.5 * ps, 0, h, mat); if (im) g.add(im); return im; };
+  const s0 = Math.min(W, D);
+  if (strip) { // wide and short: number + name on the left, vents in the middle, the sticker on the right
+    const ps = .028, ps2 = Math.min(.018, .62 / (m.name.length * 6)); put(m.num, ps, -.62, -.04, MAT.knob, .04); put(m.name, ps2, -.62, .2, MAT.orange, .028);
+    for (let i = 0; i < 6; i++) mesh(new RoundedBoxGeometry(.03, .01, .36, 2, .012), BK.hole, -.2 + i * .06, -.002, .07);
+    const sw = .68, sd = .32; mesh(new THREE.BoxGeometry(sw, .002, sd), new THREE.MeshStandardMaterial({ map: stickerTex(m, sw, sd), roughness: .55 }), .5, .001, .08);
+  } else {
+    const ps = small ? .03 : s0 * .032, nz = small ? -.04 : -D / 2 + .7; put(m.num, ps, 0, nz, MAT.knob, .04);
+    const ps2 = small ? Math.min(.013, .7 / (m.name.length * 6)) : Math.min(s0 * .02, W * .8 / (m.name.length * 6)), nmz = nz + 3.5 * ps + .07 + 3.5 * ps2; put(m.name, ps2, 0, nmz, MAT.orange, .028);
+    if (small) { const iw = .26, ic = e11Relief('icon', { width: iw, h: .014, mat: MAT.body, res: 4 }); ic.position.set(0, 0, D / 2 - .19); g.add(ic); } // the molded icon
+    else { // vents under the name, then the molded mark and the sticker along the bottom
+      const vz0 = nmz + 3.5 * ps2 + .12, bandZ = D / 2 - .34, n = Math.max(3, Math.floor((bandZ - .26 - vz0) / .07) + 1);
+      for (let i = 0; i < n; i++) mesh(new RoundedBoxGeometry(W * .62, .01, .03, 2, .012), BK.hole, 0, -.002, vz0 + i * .07);
+      const lw = .7, logo = e11Relief('lock', { width: lw, h: .016, mat: MAT.body, res: 3 }); logo.position.set(-W / 2 + .26 + lw / 2, 0, bandZ); g.add(logo);
+      const sw = .8, sd = .36; mesh(new THREE.BoxGeometry(sw, .002, sd), new THREE.MeshStandardMaterial({ map: stickerTex(m, sw, sd), roughness: .55 }), W / 2 - .26 - sw / 2, .001, bandZ); }
+  }
+  { const lb = makeLabel('TAP TO WAKE', { size: .0085, align: 'center' }); lb.position.set(0, .0012, D / 2 - (small ? .06 : .1)); g.add(lb); }
+  return { g, plate }; }
 Object.values(modules).forEach(m => {
   const wide = m.W >= m.D; m.flipAx = wide ? 'x' : 'z'; m.flipK = 0; m.flipped = false;
   const slab = new THREE.Mesh(new THREE.BoxGeometry(m.W - .03, .004, m.D - .03), MAT.dark); slab.position.y = .001; m.inner.add(slab);
-  const fin = BACKS[m.id] || 'badge', bk = new THREE.Mesh(new THREE.PlaneGeometry(m.W - .02, m.D - .02), backMat(fin, backTex(m, fin))); bk.rotation.x = Math.PI / 2; if (!wide) bk.rotation.z = Math.PI; bk.position.y = -.0015; bk.userData.cannotReceiveAO = true; m.inner.add(bk);
-  m.back = buildBack(m);
+  const bb = buildBack(m), bk = bb.plate; m.back = bb.g;
   const tab = new THREE.Mesh(new RoundedBoxGeometry(.34, .06, .062, 3, .024), MAT.capM); tab.position.set(-m.W / 2 + .3, m.th - .032, -m.D / 2 - .03); tab.castShadow = true; m.inner.add(tab);
   const dot = new THREE.Mesh(new THREE.BoxGeometry(.2, .062, .014), MAT.orange); dot.position.copy(tab.position); m.inner.add(dot);
   const ctrl = { type: 'key', press: 0, start() { if (EDIT) return; m.flipped = !m.flipped; beep(m.flipped ? 220 : 330, .04, 'square', .04); log((m.flipped ? 'HIDE: ' : 'WAKE: ') + m.name); if (selected === m) select(null); }, move() { }, tick() { } };
