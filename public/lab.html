@@ -1925,18 +1925,18 @@ function e11Blocks(rects, cell, ox, oz, y0, h, mat) {
   im.castShadow = true; im.receiveShadow = true; return im;
 }
 // layout: 'icon' | 'lock' | 'stack' | 'form' · style: 'raise' (logo stands up), 'carve' (logo cut into a badge), 'pocket' (the wish form sunk into a raised plate, logo standing in it)
-function e11Relief(layout, { width, h = .02, mat = MAT.body, colon = E11COLON, res = 2, style = 'raise', pad = 0, plate = null } = {}) {
+function e11Relief(layout, { width, h = .02, mat = MAT.body, colon = E11COLON, res = 2, style = 'raise', pad = 0, plate = null, inner = null } = {}) {
   const M = e11Mask(layout, res), [x0, y0, x1, y1] = M.box, k = width / (x1 - x0), cell = k / res, W = M.W, H = M.H, g = new THREE.Group(), add = o => o && g.add(o), depth = (y1 - y0) * k, ox = -width / 2, oz = -depth / 2;
   if (style === 'raise') { add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h, mat)); }
   else if (style === 'carve') { // a badge block with the mark cut into it; the cuts go almost to the floor
     const pc = Math.round(pad / cell), W2 = W + pc * 2, H2 = H + pc * 2, inv = new Uint8Array(W2 * H2).fill(1);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (M.raise[y * W + x] || M.colon[y * W + x]) inv[(y + pc) * W2 + x + pc] = 0;
     add(e11Blocks(e11Greedy(inv, W2, H2), cell, ox - pc * cell, oz - pc * cell, 0, h, mat));
-    add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h * .18, mat)); }
+    add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h * .18, inner || mat)); }
   else if (style === 'pocket') { // plate raised all round, the wish form (and its loose cells) sunk into it, the mark standing in the pocket
     const inv = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) inv[i] = M.form[i] ? 0 : 1;
     add(e11Blocks(e11Greedy(inv, W, H), cell, ox, oz, 0, h, mat));
-    add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h * .62, mat));
+    add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h * .62, inner || mat));
     if (plate) { const [pw, pd] = plate, bx = (sx, sz, w, d) => { if (w <= .001 || d <= .001) return; const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); b.position.set(sx + w / 2, h / 2, sz + d / 2); b.castShadow = b.receiveShadow = true; g.add(b); };
       bx(-pw / 2, -pd / 2, pw, oz + pd / 2); bx(-pw / 2, -oz, pw, pd / 2 + oz); bx(-pw / 2, oz, ox + pw / 2, depth); bx(-ox, oz, pw / 2 + ox, depth); } } // the rest of the plate, out to the edges
   if (colon) add(e11Blocks(e11Greedy(M.colon, W, H), cell, ox, oz, 0, style === 'carve' ? h * .3 : h * .5, colon));
@@ -2345,26 +2345,45 @@ function setEdit(v) { EDIT = v; UI.editLed?.set(v); if (UI.editKey) UI.editKey.o
    BOOT + LOOP
    ========================================================= */
 /* ---------- FLIP: every device has a latch on its top edge; press it and the device turns over in place to show its back ---------- */
-function backTex(m) { const k = 256, cv = document.createElement('canvas'); cv.width = Math.round(m.W * k); cv.height = Math.round(m.D * k); const c = cv.getContext('2d'), W = cv.width, H = cv.height;
-  c.fillStyle = '#2c2c2f'; c.fillRect(0, 0, W, H); c.strokeStyle = '#1c1c1e'; c.lineWidth = 6; c.strokeRect(14, 14, W - 28, H - 28);
-  c.fillStyle = '#18181a'; const n = Math.max(4, Math.floor(H / 60)); for (let i = 0; i < n; i++) c.fillRect(W * .14, H * .62 + i * 16, W * .72, 7); // vents
-  [[30, 30], [W - 30, 30], [30, H - 30], [W - 30, H - 30]].forEach(([x, y]) => { c.fillStyle = '#8e9095'; c.beginPath(); c.arc(x, y, 9, 0, 7); c.fill(); c.fillStyle = '#1c1c1e'; c.fillRect(x - 7, y - 1.5, 14, 3); });
- drawPixelText(c, 'TAP TO WAKE', W / 2, H - 34, Math.min(3, W / 60), '#77757a', 'center');
+// three backs, from Amr's references: CARBON (matte mark standing on a carbon-weave plate), POCKET (the wish form sunk into a bead-blast plate, the mark standing in it), BADGE (a matte block with the mark cut into it)
+const BACKS = { hero: 'pocket', pixel: 'carbon', cd: 'badge', stack: 'pocket', vox: 'carbon', stage: 'badge', status: 'carbon', piano: 'badge', radio: 'metal', clock: 'badge', date: 'carbon' };
+const BK_MAT = { carbon: new THREE.MeshStandardMaterial({ color: 0x0c0c0e, roughness: .92 }), metal: new THREE.MeshStandardMaterial({ color: 0x55575c, roughness: .56, metalness: .72 }), dark: new THREE.MeshStandardMaterial({ color: 0x2a2b2f, roughness: .55, metalness: .7 }), badge: new THREE.MeshStandardMaterial({ color: 0x3d3d42, roughness: .7 }), cut: new THREE.MeshStandardMaterial({ color: 0x121214, roughness: .9 }) };
+BK_MAT.pocket = BK_MAT.metal;
+function backTex(m, fin) { const k = 256, cv = document.createElement('canvas'); cv.width = Math.round(m.W * k); cv.height = Math.round(m.D * k); const c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  if (fin === 'carbon') { c.fillStyle = '#0d0d0f'; c.fillRect(0, 0, W, H); const q = 12; for (let y = 0; y < H; y += q) for (let x = 0; x < W; x += q) { const i = x / q, j = y / q, hz = ((i + j) % 4) < 2, g = hz ? c.createLinearGradient(x, y, x, y + q) : c.createLinearGradient(x, y, x + q, y); g.addColorStop(0, '#111114'); g.addColorStop(.5, hz ? '#2c2d33' : '#23242a'); g.addColorStop(1, '#0f0f12'); c.fillStyle = g; c.fillRect(x + .6, y + .6, q - 1.2, q - 1.2); } } // 2/2 twill
+  else if (fin === 'badge') { c.fillStyle = '#18181b'; c.fillRect(0, 0, W, H); for (let i = 0; i < W * H / 90; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.12)'; c.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5); } }
+  else { c.fillStyle = fin === 'pocket' ? '#2b2c30' : '#6a6c71'; c.fillRect(0, 0, W, H); for (let i = 0; i < W * H / 14; i++) { c.fillStyle = Math.random() < .5 ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.14)'; c.fillRect(Math.random() * W, Math.random() * H, 1.2, 1.2); } } // bead blast
+  [[26, 26], [W - 26, 26], [26, H - 26], [W - 26, H - 26]].forEach(([x, y]) => { c.fillStyle = '#8e9095'; c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); c.fillStyle = '#1c1c1e'; c.fillRect(x - 6, y - 1.3, 12, 2.6); });
+  drawPixelText(c, 'TAP TO WAKE', W / 2, H - 26, Math.min(2, W / 90), fin === 'pocket' || fin === 'metal' ? '#3a3b3f' : '#4a4a4f', 'center');
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; }
+function backMat(fin, map) { return fin === 'carbon' ? new THREE.MeshPhysicalMaterial({ map, roughness: .36, metalness: .1, clearcoat: .9, clearcoatRoughness: .18 }) : fin === 'badge' ? new THREE.MeshStandardMaterial({ map, roughness: .74 }) : new THREE.MeshStandardMaterial({ map, roughness: .48, metalness: .78 }); }
+function buildBack(m) { // the mark on the back, in the device's own coordinates as you'll see them once it's turned over
+  const fin = BACKS[m.id] || 'badge', small = m.W < 1.5 && m.D < 1.5, strip = !small && Math.min(m.W, m.D) < 1.5;
+  const g = new THREE.Group(); g.rotation[m.flipAx] = Math.PI; g.position.y = -.0015; m.inner.add(g);
+  const lay = small ? 'icon' : strip ? 'lock' : fin === 'pocket' ? 'form' : 'stack', asp = { icon: 148.24 / 240, lock: 106.03 / 240, stack: 282.03 / 240, form: 660 / 720 }[lay];
+  const fw = fin === 'pocket' ? .9 : small ? .6 : strip ? .62 : .54, fd = fin === 'pocket' ? .68 : small ? .5 : strip ? .5 : .6;
+  const width = Math.min(m.W * fw, m.D * fd / asp), depth = width * asp, mat = BK_MAT[fin];
+  const label = m.num + ' ' + m.name, ps = Math.min(Math.min(m.W, m.D) * .02, m.W * .55 / (label.length * 6)), gap = fin === 'pocket' ? 0 : .07 + 7 * ps;
+  const logo = fin === 'carbon' ? e11Relief(lay, { width, h: .018, mat, res: 3 })
+    : fin === 'badge' ? e11Relief(lay, { width, h: .026, mat, inner: BK_MAT.cut, style: 'carve', pad: width * .07, res: 3 })
+    : fin === 'pocket' ? e11Relief(lay, { width, h: .022, mat, style: 'pocket', plate: [m.W - .06, m.D - .06], res: 1.4 })
+    : e11Relief(lay, { width, h: .016, mat: BK_MAT.dark, res: 3 });
+  logo.position.z = fin === 'pocket' ? -.06 : -gap / 2; g.add(logo);
+  // the variable cell: this device's number and name, in the same material
+  const cells = []; let tw = label.length * 6 - 1; [...label].forEach((ch, i) => { const gl = F5[ch]; if (!gl) return; for (let r = 0; r < 7; r++) for (let k = 0; k < 5; k++) if (gl[r][k] === '#') cells.push([i * 6 + k, r, 1, 1]); });
+  const nz = fin === 'pocket' ? m.D / 2 - .12 - 7 * ps : logo.position.z + depth / 2 + .07, ny = fin === 'pocket' ? .022 : 0;
+  const nm = e11Blocks(cells, ps, -tw * ps / 2, nz, ny, .01, fin === 'metal' || fin === 'pocket' ? BK_MAT.dark : mat); if (nm) g.add(nm);
+  return g; }
 Object.values(modules).forEach(m => {
   const wide = m.W >= m.D; m.flipAx = wide ? 'x' : 'z'; m.flipK = 0; m.flipped = false;
   const slab = new THREE.Mesh(new THREE.BoxGeometry(m.W - .03, .004, m.D - .03), MAT.dark); slab.position.y = .001; m.inner.add(slab);
-  const bk = new THREE.Mesh(new THREE.PlaneGeometry(m.W - .02, m.D - .02), new THREE.MeshStandardMaterial({ map: backTex(m), roughness: .7 })); bk.rotation.x = Math.PI / 2; if (!wide) bk.rotation.z = Math.PI; bk.position.y = -.0015; bk.userData.cannotReceiveAO = true; m.inner.add(bk);
-  { // extruded lettering on the back, built from the 5x7 font: one block per font pixel
-    const put = (str, ps, cz, mat, hgt) => { const cells = []; const tw = str.length * 6 * ps - ps; [...str].forEach((ch, i) => { const gl = F5[ch]; if (!gl) return; for (let r = 0; r < 7; r++) for (let k = 0; k < 5; k++) if (gl[r][k] === '#') cells.push([-tw / 2 + (i * 6 + k + .5) * ps, cz + (r - 3) * ps]); });
-      const im = new THREE.InstancedMesh(new THREE.BoxGeometry(ps * .96, hgt, ps * .96), mat, cells.length), M4 = new THREE.Matrix4(); cells.forEach(([x, z], i) => { M4.makeTranslation(wide ? x : -x, -hgt / 2, wide ? -z : z); im.setMatrixAt(i, M4); }); im.castShadow = true; im.receiveShadow = true; m.inner.add(im); return im; };
-    const s0 = Math.min(m.W, m.D), ps = s0 * .032, nz = -m.D * .2; m.backNum = put(m.num, ps, nz, MAT.knob, .04);
-    const ps2 = Math.min(s0 * .02, m.W * .8 / (m.name.length * 6)); m.backName = put(m.name, ps2, nz + 3.5 * ps + .07 + 3.5 * ps2, MAT.orange, .028); }
+  const fin = BACKS[m.id] || 'badge', bk = new THREE.Mesh(new THREE.PlaneGeometry(m.W - .02, m.D - .02), backMat(fin, backTex(m, fin))); bk.rotation.x = Math.PI / 2; if (!wide) bk.rotation.z = Math.PI; bk.position.y = -.0015; bk.userData.cannotReceiveAO = true; m.inner.add(bk);
+  m.back = buildBack(m);
   const tab = new THREE.Mesh(new RoundedBoxGeometry(.34, .06, .062, 3, .024), MAT.capM); tab.position.set(-m.W / 2 + .3, m.th - .032, -m.D / 2 - .03); tab.castShadow = true; m.inner.add(tab);
   const dot = new THREE.Mesh(new THREE.BoxGeometry(.2, .062, .014), MAT.orange); dot.position.copy(tab.position); m.inner.add(dot);
   const ctrl = { type: 'key', press: 0, start() { if (EDIT) return; m.flipped = !m.flipped; beep(m.flipped ? 220 : 330, .04, 'square', .04); log((m.flipped ? 'HIDE: ' : 'WAKE: ') + m.name); if (selected === m) select(null); }, move() { }, tick() { } };
-  [tab, dot, bk, m.backNum, m.backName].forEach(o => { o.userData.modRef = m; reg(o, ctrl); });
-  { const keep = new Set([tab, dot, bk, slab, m.backNum, m.backName]), bx = new THREE.Box3(); m.group.updateMatrixWorld(true); m.pokers = m.inner.children.filter(o => { if (keep.has(o)) return false; bx.setFromObject(o); return isFinite(bx.min.y) && bx.min.y - m.group.position.y < -.006; }); (m.extraPokers || []).forEach(o => { if (!m.pokers.includes(o)) m.pokers.push(o); }); } // parts deeper than the shell (drums, wheels, trays) must not poke through the back
+  [tab, dot, bk].forEach(o => { o.userData.modRef = m; reg(o, ctrl); }); m.back.traverse(o => { if (o.isMesh) { o.userData.modRef = m; reg(o, ctrl); } });
+  { const keep = new Set([tab, dot, bk, slab, m.back]), bx = new THREE.Box3(); m.group.updateMatrixWorld(true); m.pokers = m.inner.children.filter(o => { if (keep.has(o)) return false; bx.setFromObject(o); return isFinite(bx.min.y) && bx.min.y - m.group.position.y < -.006; }); (m.extraPokers || []).forEach(o => { if (!m.pokers.includes(o)) m.pokers.push(o); }); } // parts deeper than the shell (drums, wheels, trays) must not poke through the back
 });
 let BOOTED = false; setTimeout(() => BOOTED = true, 0);
 let BOOT_T = 0;
