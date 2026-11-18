@@ -406,11 +406,11 @@ function makeLabel(str, { size = .0115, align = 'left', color = null, bg = null 
    LAYOUT — the bento rules
    ========================================================= */
 const U = 1, G = .08, RIM = .12, SR0 = .44, SB = .56, FT = .32;
-const SIZES = { hero: [2, 2], pixel: [2, 2], stack: [2, 3], status: [2, 1], piano: [2, 1], clock: [1, 1], date: [1, 1], cd: [2, 2], radio: [2, 1], vox: [2, 2] };
+const SIZES = { hero: [2, 2], pixel: [2, 2], stack: [2, 3], status: [2, 1], piano: [2, 1], clock: [1, 1], date: [1, 1], cd: [2, 2], radio: [2, 1], vox: [2, 2], stage: [2, 2] };
 const LAYOUTS = {
-  7: { key: 7, cols: 9, rows: 4, pos: { hero: [0, 0], pixel: [2, 0], cd: [4, 0], clock: [6, 0], date: [6, 1], stack: [7, 0], vox: [0, 2], piano: [4, 2], radio: [4, 3], status: [7, 3] } },
-  4: { key: 4, cols: 4, rows: 9, pos: { hero: [0, 0], pixel: [2, 0], cd: [0, 2], stack: [2, 2], clock: [0, 4], date: [1, 4], piano: [0, 5], radio: [2, 5], status: [0, 6], vox: [0, 7] } },
-  2: { key: 2, cols: 2, rows: 15, pos: { hero: [0, 0], radio: [0, 2], clock: [0, 3], date: [1, 3], cd: [0, 4], pixel: [0, 6], piano: [0, 8], stack: [0, 9], status: [0, 12], vox: [0, 13] } },
+  7: { key: 7, cols: 9, rows: 4, pos: { hero: [0, 0], pixel: [2, 0], cd: [4, 0], clock: [6, 0], date: [6, 1], stack: [7, 0], vox: [0, 2], stage: [2, 2], piano: [4, 2], radio: [4, 3], status: [7, 3] } },
+  4: { key: 4, cols: 4, rows: 9, pos: { hero: [0, 0], pixel: [2, 0], cd: [0, 2], stack: [2, 2], clock: [0, 4], date: [1, 4], piano: [0, 5], radio: [2, 5], status: [0, 6], stage: [2, 6], vox: [0, 7] } },
+  2: { key: 2, cols: 2, rows: 17, pos: { hero: [0, 0], radio: [0, 2], clock: [0, 3], date: [1, 3], cd: [0, 4], pixel: [0, 6], piano: [0, 8], stack: [0, 9], status: [0, 12], vox: [0, 13], stage: [0, 15] } },
 };
 const TB = .5; // top bar: the device's own menu
 function dims(L) {
@@ -846,9 +846,10 @@ const INFO = {
   clock: { ar: 'الساعة', d: 'ساعة كروت بتتقلب كل دقيقة. لما الساعة تبقى 11:11 الجهاز كله بينوّر. دوس WISH والكروت تقلب لحد 11:11، واتمنّى.', i: 'LOCAL TIME', o: '11:11' },
   piano: { ar: 'بيانو 8-BIT', d: 'أوكتاف كامل تعزف عليه بالماوس أو اللمس، واسحب على المفاتيح عشان تعمل glissando. وعلى الكيبورد A W S E D F T G Y H U J K. نوبة WAVE بتغيّر الصوت: square وtriangle وsaw وsine.', i: 'KEYS · TOUCH', o: 'SOUND' },
   vox: { ar: 'مسجّل الصوت', d: 'ريكوردر بكرتين زي بتوع الاستوديو. دوس REC واتكلم لحد 8 ثواني، وأول ما توقف هيرجعلك صوتك بالصوت اللي اخترته من زراير VOICE: عادي، أو تريلر فيلم، أو روبوت، أو راديو، أو تشيبمنك. غيّر الصوت وهو شغال، وفيدر SPEED بيسرّع ويبطّأ الشريط. صوتك بيفضل في المتصفح بتاعك بس، مش بيتسجّل ولا بيترفع في أي حتة.', i: 'MIC', o: 'MASTER' },
+  stage: { ar: 'مسرح الإيفنت', d: 'ديسك تحكم في شو حقيقي على مسرح صغير: شاشة LED، و6 موفينج هيدز، وجمهور. المسرح بيرقص على أي مزيكا شغالة في الجهاز (DISC أو RADIO أو البيانو أو صوتك من VOX). الفيدرز: LIGHT لقوة الإضاءة، وMOVE لسرعة الحركة، وCOLOR للون. زراير الـ CUE بتغيّر شكل الشو: SWEEP وFAN وCHASE وSTROBE. وGO بيطلق البايرو، ولو مفيش مزيكا بيشغّل DISC ويبدأ الشو.', i: 'MASTER AUDIO', o: 'SHOW' },
   date: { ar: 'التاريخ', d: 'تقويم دائم ببكرات حقيقية: الشهر، واليوم، وأيام الأسبوع. لف أي بكرة بصباعك، وبعد شوية بترجع للنهارده لوحدها، أو دوس على المقبض النحاسي.', i: 'TODAY', o: 'DRUMS' },
 };
-const ORDER = ['hero', 'pixel', 'cd', 'stack', 'status', 'clock', 'date', 'piano', 'radio', 'vox'];
+const ORDER = ['hero', 'pixel', 'cd', 'stack', 'status', 'clock', 'date', 'piano', 'radio', 'vox', 'stage'];
 const BOOT_SEQ = ORDER.slice().sort(() => Math.random() - .5); // first load: devices wake one after another, in a random order
 
 /* ---------- MASTER AUDIO BUS: everything the device plays goes through VOL + a 5-band EQ ---------- */
@@ -1409,6 +1410,112 @@ function voxPlay() {
     const ph = st === 'play' ? Math.min(31, Math.floor(VOX.ph * 32)) : -1, rc = st === 'rec' ? Math.min(31, Math.floor(VOX.len / VOX.max * 32)) : -1;
     for (let i = 0; i < 32; i++) { const a = VOX.peaks[i], h = a > .06 ? Math.max(1, Math.round(a * 3)) : 0, c = i === ph || i === rc ? 3 : ph >= 0 && i < ph ? 6 : 1; if (h) for (let k = -h; k <= h; k++) s.px(i, 11 + k, c); else s.px(i, 11, i === rc ? 3 : 6); }
     s.render(); };
+}
+
+/* ---------- 10 STAGE 2x2 — L2: a show-control desk with its own miniature stage; the show runs on whatever the device is playing ---------- */
+const STG = { cue: 0, dim: .8, move: .45, hue: 0, beat: 0, kick: 0, avg: 0, lastBeat: -9, bpm: 0, beats: [], phase: 0, live: false, flash: 0, pyroT: -9 };
+const CUES = ['SWEEP', 'FAN', 'CHASE', 'STROBE'];
+const STAGE_COLS = [0xFF5A1F, 0xFFB347, 0xF4F2EC, 0x2EC4B6, 0x7A5CFF, 0xFF2E7E].map(c => new THREE.Color(c));
+const stageCol = (v, out) => { const f = clamp(v) * (STAGE_COLS.length - 1), i = Math.min(STAGE_COLS.length - 2, Math.floor(f)); return out.copy(STAGE_COLS[i]).lerp(STAGE_COLS[i + 1], f - i); };
+function stageGo() {
+  ensureAC(); STG.pyroT = S.now; STG.flash = 1; glow('stage');
+  const music = CD.playing || RADIO.on || MASTER.lvl > .03; if (!music) { cdPlay(); log('STAGE: GO · DISC ROLLING'); } else log('STAGE: GO · PYRO');
+  [0, .12, .24].forEach((d, i) => beep(140 - i * 30, .3, 'sawtooth', .05, d));
+}
+{ const m = new Module('stage', { num: '10', name: 'STAGE' }); m.st = STG;
+  const SX = 0, SZ = -.44, SW = 1.86, SD = 1.0;
+  m.hole({ type: 'r', x: SX, z: SZ, w: SW, d: SD, r: .05 });
+  [['LIGHT', .8, v => STG.dim = v], ['MOVE', .45, v => STG.move = v], ['COLOR', 0, v => STG.hue = v]].forEach(([lb, v0, fn], i) => { const x = -.84 + i * .28; m.vfader({ x, z: .5, len: .44, cw: .14, value: v0, onChange: v => fn(v) }); m.label(lb, x, .84, { align: 'center', size: .0095 }); });
+  m.scr = m.screen({ x: .32, z: .3, cols: 32, rows: 13, mode: 'led', s: 10 });
+  m.cueKeys = CUES.map((c, i) => m.key({ x: .06 + (i % 2) * .32, z: .61 + ((i / 2) | 0) * .17, w: .28, d: .12, label: c, tone: 'dark', lamp: true, onPress: () => { STG.cue = i; beep(700 + i * 120, .03); log('STAGE: CUE ' + (i + 1) + ' ' + c); } }));
+  m.plate(.22, .695, .7, .37);
+  m.go = m.dome({ x: .84, z: .62, r: .13, label: 'GO', accent: true, onPress: () => stageGo() }); m.label('PYRO', .84, .84, { align: 'center', size: .0095 });
+  m.led_ = m.led({ x: .96, z: .96 }); m.label('10 STAGE', -.97, .96);
+  m.build();
+  const D0 = m.deck, Y0 = D0 + .05; // stage deck height
+  const floorM = new THREE.Mesh(new THREE.PlaneGeometry(SW, SD), MAT.dark); floorM.rotation.x = -Math.PI / 2; floorM.position.set(SX, D0 + .004, SZ); floorM.receiveShadow = true; m.inner.add(floorM);
+  const deckM = new THREE.MeshPhysicalMaterial({ color: 0x0f0f12, roughness: .2, clearcoat: 1, clearcoatRoughness: .08 });
+  const plat = new THREE.Mesh(new RoundedBoxGeometry(1.52, .05, .6, 3, .012), deckM); plat.position.set(0, D0 + .025, -.52); plat.castShadow = plat.receiveShadow = true; m.inner.add(plat);
+  const lipM = new THREE.MeshBasicMaterial({ color: 0x331208 }); { const lip = new THREE.Mesh(new THREE.BoxGeometry(1.5, .012, .008), lipM); lip.position.set(0, D0 + .036, -.219); m.inner.add(lip); }
+  // --- LED wall, raked back toward the house
+  const WC = document.createElement('canvas'); WC.width = 192; WC.height = 64; const wx = WC.getContext('2d'); wx.imageSmoothingEnabled = false;
+  const WT = new THREE.CanvasTexture(WC); WT.colorSpace = THREE.SRGBColorSpace; WT.magFilter = THREE.NearestFilter; WT.minFilter = THREE.LinearFilter; WT.generateMipmaps = false;
+  const wallM = new THREE.MeshBasicMaterial({ map: WT }); wallM.color.setScalar(1.25);
+  const wall = new THREE.Group(); wall.position.set(0, Y0, -.74); wall.rotation.x = -.95; m.inner.add(wall);
+  { const sc = new THREE.Mesh(new THREE.PlaneGeometry(1.26, .42), wallM); sc.position.y = .225; sc.scale.y = .72; sc.position.y = .17; sc.userData.cannotReceiveAO = true; wall.add(sc);
+    const fr = (w, h, x, y) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, .03), MAT.capD); b.position.set(x, y, -.016); b.castShadow = true; wall.add(b); }; fr(1.32, .03, 0, .336); fr(1.32, .03, 0, .005); fr(.03, .36, -.645, .17); fr(.03, .36, .645, .17);
+    [-.5, 0, .5].forEach(x => { const leg = new THREE.Mesh(new THREE.BoxGeometry(.02, .02, .2), MAT.capD); leg.position.set(x, .05, -.11); leg.rotation.x = .9; wall.add(leg); }); }
+  // --- moving heads: base, yoke that pans, head that tilts, a lens and a beam
+  const gradC = document.createElement('canvas'); gradC.width = 4; gradC.height = 256; { const c = gradC.getContext('2d'), g = c.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, '#000'); g.addColorStop(.55, '#3a3a3a'); g.addColorStop(.9, '#d0d0d0'); g.addColorStop(1, '#fff'); c.fillStyle = g; c.fillRect(0, 0, 4, 256); }
+  const gradT = new THREE.CanvasTexture(gradC); const BL = .74, beamGeo = new THREE.CylinderGeometry(.12, .012, BL, 28, 1, true); beamGeo.translate(0, BL / 2 + .03, 0);
+  const NH = 6, heads = [];
+  for (let i = 0; i < NH; i++) { const x = -.6 + i * .24, u = i / (NH - 1) - .5;
+    const base = new THREE.Mesh(new RoundedBoxGeometry(.08, .03, .07, 2, .008), MAT.capD); base.position.set(x, Y0 + .015, -.68); base.castShadow = true; m.inner.add(base);
+    const yoke = new THREE.Group(); yoke.position.set(x, Y0 + .03, -.68); m.inner.add(yoke);
+    [-1, 1].forEach(sg => { const arm = new THREE.Mesh(new THREE.BoxGeometry(.012, .075, .03), MAT.capD); arm.position.set(sg * .042, .037, 0); arm.castShadow = true; yoke.add(arm); });
+    const hd = new THREE.Group(); hd.position.y = .062; yoke.add(hd);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(.032, .028, .075, 20), MAT.blackKey); body.castShadow = true; hd.add(body);
+    const lensM = new THREE.MeshBasicMaterial({ color: 0x111111 }), lens = new THREE.Mesh(new THREE.CircleGeometry(.024, 24), lensM); lens.rotation.x = -Math.PI / 2; lens.position.y = .0385; hd.add(lens);
+    const beamM = new THREE.MeshBasicMaterial({ map: gradT, color: 0x000000, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const beam = new THREE.Mesh(beamGeo, beamM); beam.userData.noAO = true; beam.renderOrder = 5; hd.add(beam);
+    heads.push({ yoke, hd, lensM, beamM, u, i, pan: 0, tilt: 1, I: 0, col: new THREE.Color() }); }
+  // --- the crowd, front of house
+  const crowdM = new THREE.MeshStandardMaterial({ color: 0x1d1d22, roughness: .85, emissive: 0x000000 }), phoneM = new THREE.MeshBasicMaterial({ color: 0xffffff }); phoneM.color.setScalar(3);
+  const crowd = []; for (let k = 0; k < 19; k++) { const row = k < 10 ? 0 : 1, n = row ? 9 : 10, j = row ? k - 10 : k, x = -.8 + (j + .5 + (row ? .5 : 0)) * 1.6 / (n + .5) + (hash(k * 3.7) - .5) * .05, z = row ? .02 : -.08;
+    const g = new THREE.Group(); g.position.set(x, D0 + .004, z); m.inner.add(g);
+    const b = new THREE.Mesh(new THREE.CapsuleGeometry(.03, .03, 4, 10), crowdM); b.scale.x = 1.35; b.position.y = .046; b.castShadow = true; g.add(b);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(.022, 12, 8), crowdM); h.position.y = .1; h.castShadow = true; g.add(h);
+    const ph = new THREE.Mesh(new THREE.BoxGeometry(.008, .014, .004), phoneM); ph.position.set(.03, .14, 0); ph.visible = false; g.add(ph);
+    crowd.push({ g, ph, off: hash(k * 9.1) * 6.28, amp: .6 + hash(k * 5.3) * .6, phone: hash(k * 2.9) > .62 }); }
+  // --- pyro: two spark fountains at the downstage corners
+  const NP = 140, pPos = new Float32Array(NP * 3), pVel = new Float32Array(NP * 3), pT = new Float32Array(NP).fill(-9), pLife = new Float32Array(NP);
+  const pGeo = new THREE.BufferGeometry(); pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  const pMat = new THREE.PointsMaterial({ size: .022, color: new THREE.Color(2.4, .9, .3), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const sparks = new THREE.Points(pGeo, pMat); sparks.frustumCulled = false; sparks.userData.noAO = true; m.inner.add(sparks); for (let i = 0; i < NP; i++) pPos[i * 3 + 1] = -5;
+  let pyroArmed = -9;
+  const tmpC = new THREE.Color(), tmpC2 = new THREE.Color();
+  TICKERS.push((dt, t) => {
+    // beat: the low bands of the master bus against their own running average; with nothing playing the stage keeps a slow house clock
+    const B = MASTER.bars, low = (B[0] + B[1] + B[2] + B[3]) / 4; STG.live = MASTER.lvl > .025 && !muted;
+    STG.avg += (low - STG.avg) * Math.min(1, dt * 1.6); let beat = false;
+    if (STG.live) { if (low > STG.avg * 1.18 + .035 && t - STG.lastBeat > .26) beat = true; } else if (t - STG.lastBeat > 1.1 - STG.move * .6) beat = true;
+    if (beat) { if (STG.live) { STG.beats.push(t - STG.lastBeat); if (STG.beats.length > 8) STG.beats.shift(); const md = STG.beats.slice().sort((a, b) => a - b)[STG.beats.length >> 1]; STG.bpm = md > .25 && md < 1.5 ? Math.round(60 / md) : STG.bpm; } else STG.bpm = 0; STG.lastBeat = t; STG.beat++; STG.kick = 1; }
+    STG.kick = Math.max(0, STG.kick - dt * 3.2); STG.flash = Math.max(0, STG.flash - dt * 1.6);
+    STG.phase += dt * (.25 + STG.move * 2.1) * (STG.live ? 1 : .45);
+    const ph = STG.phase, cue = STG.cue, strobeOn = t - STG.lastBeat < .07;
+    heads.forEach(H => { const { u, i } = H; let pan = 0, tilt = 1, I = STG.live ? .5 + .5 * STG.kick : .32;
+      if (cue === 0) { pan = Math.sin(ph) * .42; tilt = .85 + .15 * Math.sin(ph * .5); }
+      else if (cue === 1) { pan = u * 1.05 * (.45 + .55 * Math.sin(ph * .8)); tilt = .85 + .1 * Math.cos(ph); }
+      else if (cue === 2) { pan = u * .5 + .15 * Math.sin(ph + i); tilt = .85; I = (STG.beat % NH === i ? 1 : .1) * (STG.live ? 1 : .7); }
+      else { pan = u * .8; tilt = .75 + .2 * STG.kick; I = strobeOn ? 1.15 : .05; }
+      I = I * STG.dim + STG.flash * .8;
+      H.pan += (pan - H.pan) * Math.min(1, dt * 5); H.tilt += (tilt - H.tilt) * Math.min(1, dt * 5); H.I += (I - H.I) * Math.min(1, dt * (cue === 3 ? 40 : 12));
+      H.yoke.rotation.y = H.pan; H.hd.rotation.x = H.tilt;
+      stageCol(STG.hue + (cue === 1 && i % 2 ? .2 : 0), H.col); if (STG.flash > .3) H.col.lerp(tmpC.setRGB(1, 1, 1), STG.flash);
+      H.beamM.color.copy(H.col).multiplyScalar(H.I * .5); H.lensM.color.copy(H.col).multiplyScalar(.15 + H.I * 3.2); });
+    stageCol(STG.hue, tmpC2); crowdM.emissive.copy(tmpC2).multiplyScalar(.05 + STG.dim * (STG.live ? .1 + .25 * STG.kick : .05) + STG.flash * .4); lipM.color.copy(tmpC2).multiplyScalar(.25 + STG.dim * (STG.live ? .6 + 1.2 * STG.kick : .3));
+    crowd.forEach(C => { const jump = Math.max(0, 1 - (t - STG.pyroT) * 1.4), bob = STG.live ? Math.abs(Math.sin(ph * 1.2 + C.off)) * .012 * C.amp * (.5 + STG.kick) : 0; C.g.position.y = D0 + .004 + bob + jump * Math.abs(Math.sin((t - STG.pyroT) * 9 + C.off)) * .03; C.ph.visible = C.phone && STG.dim < .35; });
+    // pyro: arm on GO, fire a stream of sparks for a second, gravity does the rest
+    if (STG.pyroT !== pyroArmed) { pyroArmed = STG.pyroT; for (let i = 0; i < NP; i++) { const sx = i % 2 ? .72 : -.72; pT[i] = t + (i / NP) * 1.1; pLife[i] = .7 + hash(i * 1.3 + t) * .6; pPos[i * 3] = sx; pPos[i * 3 + 1] = -5; pPos[i * 3 + 2] = -.24; pVel[i * 3] = (hash(i * 7.7 + t) - .5) * .35 - sx * .12; pVel[i * 3 + 1] = 1.3 + hash(i * 3.3 + t) * .9; pVel[i * 3 + 2] = (hash(i * 5.1 + t) - .5) * .3 + .12; } }
+    let anyP = false; for (let i = 0; i < NP; i++) { const age = t - pT[i]; if (age < 0 || age > pLife[i]) { pPos[i * 3 + 1] = -5; continue; } anyP = true;
+      if (age < dt * 1.5) { pPos[i * 3] = i % 2 ? .72 : -.72; pPos[i * 3 + 1] = Y0 + .02; pPos[i * 3 + 2] = -.24; }
+      pVel[i * 3 + 1] -= 3.2 * dt; pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt * .55; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt; }
+    pGeo.attributes.position.needsUpdate = true; sparks.visible = anyP;
+    m.cueKeys.forEach((k, i) => k.on = i === cue); m.led_.set(STG.live ? STG.kick > .5 : Math.floor(t * 1.5) % 2 === 0); m.active = STG.live || anyP;
+  });
+  m.draw = t => { const s = m.scr; s.clear(0);
+    s.text(String(STG.cue + 1), 1, 1, 3); s.text(CUES[STG.cue], 7, 1, 1);
+    for (let k = 0; k < 4; k++) s.rect(k * 8, 7, 7, 1, STG.beat % 4 === k ? 3 : 6); // the bar: four beats, the current one lit
+    if (t - STG.pyroT < 1.4) { if (Math.floor(t * 6) % 2) s.text('PYRO', 1, 8, 3); } else s.text(STG.live ? (STG.bpm ? 'BPM ' + STG.bpm : 'LIVE') : 'IDLE', 1, 8, STG.live ? 1 : 2);
+    s.render();
+    // LED wall: 192x64 pixels
+    const c = wx, W = 192, H = 64; c.fillStyle = '#000'; c.fillRect(0, 0, W, H); stageCol(STG.hue, tmpC); const hex = '#' + tmpC.getHexString();
+    if (t - STG.pyroT < 1.6) { const k = 1 - (t - STG.pyroT) / 1.6; c.fillStyle = `rgba(255,255,255,${k * k})`; c.fillRect(0, 0, W, H); drawPixelText(c, '11:11', W / 2, 14, 7, k > .5 ? '#141414' : OR, 'center'); }
+    else if (STG.live) { const B = MASTER.bars; for (let i = 0; i < 24; i++) { const h = Math.round(clamp(B[i] * 1.15) * 56), x = i * 8; for (let y = 0; y < h; y += 3) { c.fillStyle = y > 44 ? '#F4F2EC' : hex; c.fillRect(x + 1, H - 4 - y, 6, 2); } }
+      if (STG.cue === 3 && t - STG.lastBeat < .07) { c.fillStyle = '#fff'; c.fillRect(0, 0, W, H); }
+      if (STG.beat % 8 < 2) drawPixelText(c, 'ELEVEN11', W / 2, 6, 3, '#F4F2EC', 'center'); }
+    else { const msg = 'ELEVEN11 · LIVE EVENTS · PRESS GO', mw = msg.length * 16; drawPixelText(c, msg, W - (t * 46) % (mw + W), 22, 4, hex, 'left'); }
+    WT.needsUpdate = true; };
 }
 
 /* ---------- 02 STACK 2x3 — L2: falling blocks ---------- */
@@ -2012,7 +2119,7 @@ addEventListener('resize', () => {
    ========================================================= */
 let EDIT = false, drag = null;
 const REMOVED = new Set();
-const BASE_ROWS = { 7: 4, 4: 9, 2: 15 };
+const BASE_ROWS = { 7: 4, 4: 9, 2: 17 };
 const DEFAULTS = JSON.stringify(Object.fromEntries(Object.entries(LAYOUTS).map(([k, v]) => [k, { rows: v.rows, pos: v.pos }])));
 function modOf(o) { while (o) { if (o.userData && o.userData.modRef) return o.userData.modRef; o = o.parent; } return null; }
 function occupied(Lx, except) { const occ = new Set(); for (const id in Lx.pos) { if (id === except) continue; const [c, r] = Lx.pos[id], [w, h] = SIZES[id]; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) occ.add((r + j) * 100 + c + i); } return occ; }
