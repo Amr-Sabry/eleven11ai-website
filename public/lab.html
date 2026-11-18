@@ -1917,7 +1917,29 @@ function e11Greedy(m, W, H) { // binary grid → as few rectangles as possible
     for (let yy = 0; yy < h; yy++) used.fill(1, (y + yy) * W + x, (y + yy) * W + x + w); out.push([x, y, w, h]); }
   return out;
 }
-const E11INK = new THREE.MeshPhysicalMaterial({ color: 0xEEEBE5, roughness: .38, clearcoat: .5, clearcoatRoughness: .25 }); // the mark is inlaid in the brand's beige, satin, so it reads at any size
+// finish of the mark: 'metal' (default) — a machined aluminium nameplate, satin face + polished diamond-cut walls; '#mark=light' — a flush frosted light-pipe; '#mark=beige' — the old satin inlay
+const E11FIN = (location.hash.match(/mark=(\w+)/) || [])[1] || 'metal', E11H = { metal: .55, light: .22, beige: 1 }[E11FIN] ?? .55;
+const E11INK = new THREE.MeshPhysicalMaterial({ color: 0xEEEBE5, roughness: .38, clearcoat: .5, clearcoatRoughness: .25 });
+const E11STUDIO = (() => { // the metal gets its own little photo studio to reflect: a big overhead softbox (the page is shot from straight above, so this is what every face sees) fading from the back-left, dark all round, strips low on the sides for the cut walls
+  const s = new THREE.Scene(); s.background = new THREE.Color(0x060607);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d'), gr = c.createRadialGradient(110, 110, 0, 128, 128, 182);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(.55, '#e6e6e6'); gr.addColorStop(.85, '#6e6e6e'); gr.addColorStop(1, '#262626'); c.fillStyle = gr; c.fillRect(0, 0, 256, 256); // a wide even plateau, so a back that sits a few degrees off still catches it
+  const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ map: tx, color: new THREE.Color(.84, .84, .86), side: THREE.DoubleSide })); top.rotation.x = Math.PI / 2; top.position.y = 6.5; s.add(top);
+  const box = (w, h, x, y, z, col, i) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(col).multiplyScalar(i), side: THREE.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); s.add(m); };
+  box(1.2, 5, -7, .8, -.5, 0xffe2c4, 2.4); // warm strip, left (the key)
+  box(1, 4.5, 7, .6, .5, 0x8fd3d3, 1.4); // teal kicker, right
+  box(10, 1, 0, .4, 7, 0xfff1de, 1.8); box(10, 1, 0, .6, -7, 0xffffff, 1.2); // low cards front and back for the front/back walls
+  return pmrem.fromScene(s, .01).texture; })();
+const E11BRUSH = sh => { // brushed: fine streaks along x, from world position, so every block of the mark shares one grain
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vE11W;').replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n#ifdef USE_INSTANCING\nvE11W = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;\n#else\nvE11W = (modelMatrix * vec4(transformed, 1.0)).xyz;\n#endif');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vE11W;\nfloat e11h(float n) { return fract(sin(n * 91.3458) * 47453.5453); }')
+    .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nfloat e11s = .6 * e11h(floor(vE11W.z * 900.0)) + .4 * e11h(floor(vE11W.z * 260.0 + 7.0));\nroughnessFactor = clamp(roughnessFactor + (e11s - .5) * .22, .04, 1.0);\ndiffuseColor.rgb *= .9 + .2 * e11s;'); };
+const E11FACE = new THREE.MeshPhysicalMaterial({ color: 0xc9c9cb, metalness: 1, roughness: .3, envMap: E11STUDIO, envMapIntensity: 1 }); E11FACE.onBeforeCompile = E11BRUSH; // brushed aluminium face
+const E11CUT = new THREE.MeshPhysicalMaterial({ color: 0xf6f4f0, metalness: 1, roughness: .07, envMap: E11STUDIO, envMapIntensity: 1.3 }); // the diamond-cut walls: polished, they catch the light and draw the mark in a bright line
+const E11PIPE = new THREE.MeshStandardMaterial({ color: 0xf2eee6, emissive: 0xfff0d8, emissiveIntensity: 1.05, roughness: .85 }); // frosted light-pipe
+const E11MARK = E11FIN === 'light' ? E11PIPE : E11FIN === 'beige' ? E11INK : [E11CUT, E11CUT, E11FACE, E11FACE, E11CUT, E11CUT]; // box faces: ±x walls, top, bottom, ±z walls
+function e11Theme(dark) { E11INK.color.set(dark ? 0xEEEBE5 : 0x1F1F1F); E11FACE.color.set(dark ? 0xc9c9cb : 0x3b3b3f); E11FACE.envMapIntensity = dark ? 1 : .8; E11CUT.envMapIntensity = dark ? 1.3 : 1.1; E11PIPE.emissiveIntensity = dark ? 1.05 : .55; E11PIPE.color.set(dark ? 0xf2eee6 : 0xfaf8f4); } // on the white body the face turns graphite-anodised so it still reads
 const E11COLON = new THREE.MeshStandardMaterial({ color: 0xFF5A1F, emissive: 0xFF5A1F, emissiveIntensity: 1.2, roughness: .4 }); // the two dots: the only thing that moves, they blink like a clock
 TICKERS.push((dt, t) => { E11COLON.emissiveIntensity = (t % 1.6) < .8 ? 1.5 : .12; });
 function e11Blocks(rects, cell, ox, oz, y0, h, mat) {
@@ -1926,7 +1948,8 @@ function e11Blocks(rects, cell, ox, oz, y0, h, mat) {
   im.castShadow = true; im.receiveShadow = true; return im;
 }
 // layout: 'icon' | 'lock' | 'stack' | 'form' · style: 'raise' (logo stands up), 'carve' (logo cut into a badge), 'pocket' (the wish form sunk into a raised plate, logo standing in it)
-function e11Relief(layout, { width, h = .02, mat = E11INK, colon = E11COLON, res = 2, style = 'raise', pad = 0, plate = null, inner = null } = {}) {
+function e11Relief(layout, { width, h = .02, mat = E11MARK, colon = E11COLON, res = 2, style = 'raise', pad = 0, plate = null, inner = null } = {}) {
+  if (style === 'raise') h *= E11H; // a nameplate is thin; only the old inlay stands tall
   const M = e11Mask(layout, res), [x0, y0, x1, y1] = M.box, k = width / (x1 - x0), cell = k / res, W = M.W, H = M.H, g = new THREE.Group(), add = o => o && g.add(o), depth = (y1 - y0) * k, ox = -width / 2, oz = -depth / 2;
   if (style === 'raise') { add(e11Blocks(e11Greedy(M.raise, W, H), cell, ox, oz, 0, h, mat)); }
   else if (style === 'carve') { // a badge block with the mark cut into it; the cuts go almost to the floor
@@ -1955,7 +1978,7 @@ function buildTopBar(F) {
   const T = new Module('stripT', { W: F.st.w, D: F.st.d, panel: true }); const w = F.st.w, narrow = w < 3.1;
   let xl = -w / 2 + .17;
   { const ih = narrow ? .26 : .3, iw0 = ih * 240 / 148.24, r = e11Relief('icon', { width: iw0, h: .022 }); r.position.set(xl + iw0 / 2, T.th, -.01); T.inner.add(r); xl += iw0 + .14;
-    if (!narrow) { const lw = ih * 240 / 106.03, r2 = e11Relief('lock', { width: lw, h: .022, res: 3 }); r2.position.set(xl + lw / 2, T.th, -.01); T.inner.add(r2); xl += lw + .22; } } // the approved mark, standing up out of the plastic
+    if (!narrow) { const lw = ih * 240 / 106.03, r2 = e11Relief('lock', { width: lw, h: .022, res: 5 }); r2.position.set(xl + lw / 2, T.th, -.01); T.inner.add(r2); xl += lw + .22; } } // the approved mark, standing up out of the plastic
   let xr = w / 2 - .2; const lab = (str, x) => T.label(str, x, .185, { align: 'center', size: .0082 });
   UI.theme = T.toggle({ x: xr, z: -.03, value: THEME.name === 'BLACK' ? 1 : 0, onChange: v => setTheme(v ? 'black' : 'white') }); lab('DARK', xr); xr -= .3;
   UI.sound = T.toggle({ x: xr, z: -.03, value: muted ? 0 : 1, onChange: v => { muted = !v; if (v) jingle(); log(v ? 'SOUND: ON' : 'SOUND: OFF'); } }); lab('SOUND', xr); xr -= .34;
@@ -2247,7 +2270,7 @@ function setGrid(v) { gridOn = v; bGrid.classList.toggle('on', v); Object.values
 bGrid.onclick = () => setGrid(!gridOn);
 function setTheme(name) {
   THEME = THEMES[name]; document.body.classList.toggle('dark', name === 'black'); bTheme.textContent = name === 'black' ? 'WHITE' : 'BLACK';
-  MAT.body.map = speckleTex(THEME); MAT.shell.map = speckleTex(shellOf(THEME)); MAT.base.color.set(THEME.chassis); MAT.rim.color.set(THEME.rim); MAT.knob.color.set(THEME.capL); E11INK.color.set(name === 'black' ? 0xEEEBE5 : 0x1F1F1F); if (name === 'black') { MAT.frost.color.set('#dadae0'); MAT.frost.attenuationColor.set('#8a8a92'); MAT.frost.attenuationDistance = 1.1; } else { MAT.frost.color.set('#f4f3ef'); MAT.frost.attenuationColor.set('#e2e0da'); MAT.frost.attenuationDistance = 1.4; } MAT.capM.color.set(THEME.capM); MAT.capD.color.set(THEME.capD); MAT.body.needsUpdate = MAT.shell.needsUpdate = true;
+  MAT.body.map = speckleTex(THEME); MAT.shell.map = speckleTex(shellOf(THEME)); MAT.base.color.set(THEME.chassis); MAT.rim.color.set(THEME.rim); MAT.knob.color.set(THEME.capL); e11Theme(name === 'black'); if (name === 'black') { MAT.frost.color.set('#dadae0'); MAT.frost.attenuationColor.set('#8a8a92'); MAT.frost.attenuationDistance = 1.1; } else { MAT.frost.color.set('#f4f3ef'); MAT.frost.attenuationColor.set('#e2e0da'); MAT.frost.attenuationDistance = 1.4; } MAT.capM.color.set(THEME.capM); MAT.capD.color.set(THEME.capD); MAT.body.needsUpdate = MAT.shell.needsUpdate = true;
   scene.background.set(THEME.floor); floorMat.color.set(THEME.floor);
   // both themes: low warm key from the left (long shadows) + low teal side light from the right
   const dark = name === 'black'; SIDE = true;
@@ -2400,7 +2423,7 @@ function buildBack(m) {
     else { // vents under the name, then the molded mark and the sticker along the bottom
       const vz0 = nmz + 3.5 * ps2 + .12, bandZ = D / 2 - .34, n = Math.max(3, Math.floor((bandZ - .26 - vz0) / .07) + 1);
       for (let i = 0; i < n; i++) mesh(new RoundedBoxGeometry(W * .62, .01, .03, 2, .012), BK.hole, 0, -.002, vz0 + i * .07);
-      const lw = .7, logo = e11Relief('lock', { width: lw, h: .016, res: 3 }); logo.position.set(-W / 2 + .26 + lw / 2, 0, bandZ); g.add(logo);
+      const lw = .7, logo = e11Relief('lock', { width: lw, h: .016, res: 4 }); logo.position.set(-W / 2 + .26 + lw / 2, 0, bandZ); g.add(logo);
       const sw = .8, sd = .36; mesh(new THREE.BoxGeometry(sw, .002, sd), new THREE.MeshStandardMaterial({ map: stickerTex(m, sw, sd), roughness: .55 }), W / 2 - .26 - sw / 2, .001, bandZ); }
   }
   { const lb = makeLabel('TAP TO WAKE', { size: .0085, align: 'center' }); lb.position.set(0, .0012, D / 2 - (small ? .06 : .1)); g.add(lb); }
